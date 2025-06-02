@@ -25,9 +25,8 @@ const GoogleIcon: React.FC = () => (
 
 const LoginPage: React.FC = () => {
   const { register, handleSubmit, formState: { errors } } = useForm<LoginFormInputs>({
-    mode: 'onSubmit', // Validate on first submission attempt
-    reValidateMode: 'onChange', // Re-validate on change after first submission
-    defaultValues: { // Explicitly set default values
+    mode: 'onChange', // DIAGNOSTIC: Validate on change to test error clearing
+    defaultValues: { 
       email: '',
       password: ''
     }
@@ -40,19 +39,14 @@ const LoginPage: React.FC = () => {
   const from = location.state?.from?.pathname || '/dashboard';
 
   const onSubmit: SubmitHandler<LoginFormInputs> = async (data) => {
-    setFormError(null); // Clear previous general form error
+    setFormError(null); 
     const { error } = await signIn(data as SignInWithPasswordCredentials); 
     if (error) {
-      // Supabase's default "Invalid login credentials" covers both "user not found"
-      // and "wrong password" for security reasons (prevents email enumeration).
-      // Providing more specific client-side messages for these two cases based on this
-      // single Supabase error is generally not possible or secure.
       if (error.message && error.message.toLowerCase().includes('invalid login credentials')) {
         setFormError("Kombinasi email dan password salah. Silakan periksa kembali.");
       } else if (error.message && error.message.toLowerCase().includes('email not confirmed')) {
         setFormError("Email Anda belum dikonfirmasi. Silakan periksa email Anda untuk link konfirmasi.");
       } else {
-        // Fallback for other errors (network, server issues, etc.)
         setFormError(error.message || "Terjadi kesalahan saat login. Silakan coba lagi nanti.");
       }
     } else {
@@ -66,7 +60,6 @@ const LoginPage: React.FC = () => {
     if (error) {
       setFormError(error.message || "Gagal login dengan Google. Coba lagi nanti.");
     }
-    // Navigasi akan diurus oleh AuthProvider onAuthStateChange jika sukses
   };
 
   return (
