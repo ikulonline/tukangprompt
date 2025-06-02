@@ -38,9 +38,11 @@ const HomePage: React.FC = () => {
             </Button>
           </Link>
         )}
-        <p className="text-sm text-slate-600 dark:text-slate-400 mt-6 max-w-lg mx-auto">
-          Belum punya akun? <Link to="/signup" className="text-sky-600 hover:text-sky-500 dark:text-sky-400 dark:hover:text-sky-300 font-medium">Daftar di sini</Link> dan mulai kreasikan prompt Anda!
-        </p>
+        {!user && !isLoading && (
+            <p className="text-sm text-slate-600 dark:text-slate-400 mt-6 max-w-lg mx-auto">
+            Belum punya akun? <Link to="/signup" className="text-sky-600 hover:text-sky-500 dark:text-sky-400 dark:hover:text-sky-300 font-medium">Daftar di sini</Link> dan mulai kreasikan prompt Anda!
+            </p>
+        )}
       </main>
     </div>
   );
