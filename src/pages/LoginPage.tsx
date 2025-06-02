@@ -26,9 +26,13 @@ const GoogleIcon: React.FC = () => (
 const LoginPage: React.FC = () => {
   const { register, handleSubmit, formState: { errors } } = useForm<LoginFormInputs>({
     mode: 'onSubmit', // Validate on first submission attempt
-    reValidateMode: 'onChange' // Re-validate on change after first submission
+    reValidateMode: 'onChange', // Re-validate on change after first submission
+    defaultValues: { // Explicitly set default values
+      email: '',
+      password: ''
+    }
   });
-  const { signIn, signInWithGoogle, isLoading: authLoading } = useAuth(); // Removed authError as formError will be primary
+  const { signIn, signInWithGoogle, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [formError, setFormError] = useState<string | null>(null);
@@ -121,7 +125,6 @@ const LoginPage: React.FC = () => {
                 Login dengan Google
               </Button>
             </div>
-            {/* Removed the second general error display block as formError above covers it */}
           </div>
         </div>
       </div>
