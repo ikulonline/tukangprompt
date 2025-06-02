@@ -24,8 +24,9 @@ const GoogleIcon: React.FC = () => (
 
 
 const LoginPage: React.FC = () => {
-  const { register, handleSubmit, formState: { errors } } = useForm<LoginFormInputs>({
-    mode: 'onChange', // DIAGNOSTIC: Validate on change to test error clearing
+  const { register, handleSubmit, formState: { errors }, trigger } = useForm<LoginFormInputs>({
+    mode: 'onSubmit', 
+    reValidateMode: 'onChange',
     defaultValues: { 
       email: '',
       password: ''
@@ -60,6 +61,7 @@ const LoginPage: React.FC = () => {
     if (error) {
       setFormError(error.message || "Gagal login dengan Google. Coba lagi nanti.");
     }
+    // Navigasi setelah login Google akan dihandle oleh onAuthStateChange -> ProtectedRoute
   };
 
   return (
@@ -82,14 +84,24 @@ const LoginPage: React.FC = () => {
             <Input
               label="Alamat Email"
               type="email"
-              {...register("email", { required: "Email tidak boleh kosong" })}
+              {...register("email", { 
+                required: "Email tidak boleh kosong",
+                onChange: () => {
+                  if (errors.email) trigger("email");
+                }
+              })}
               error={errors.email?.message}
               autoComplete="email"
             />
             <Input
               label="Password"
               type="password"
-              {...register("password", { required: "Password tidak boleh kosong" })}
+              {...register("password", { 
+                required: "Password tidak boleh kosong",
+                onChange: () => {
+                  if (errors.password) trigger("password");
+                }
+              })}
               error={errors.password?.message}
               autoComplete="current-password"
             />
