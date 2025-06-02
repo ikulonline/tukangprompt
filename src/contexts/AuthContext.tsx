@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
-import { Session, User, AuthError, SignUpWithPasswordCredentials, SignInWithPasswordCredentials, Subscription } from '@supabase/supabase-js';
+import { Session, User, AuthError, SignUpWithPasswordCredentials, SignInWithPasswordCredentials, Subscription, OAuthResponse } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabaseClient';
 
 interface AuthContextType {
@@ -10,6 +10,7 @@ interface AuthContextType {
   signIn: (credentials: SignInWithPasswordCredentials) => Promise<{ error: AuthError | null }>;
   signUp: (credentials: SignUpWithPasswordCredentials) => Promise<{ error: AuthError | null, session: Session | null, user: User | null }>;
   signOut: () => Promise<{ error: AuthError | null }>;
+  signInWithGoogle: () => Promise<OAuthResponse>;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -45,8 +46,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     );
 
-    // The authListenerData object is { subscription: Subscription }
-    // So we call unsubscribe on authListenerData.subscription
     return () => {
       authListenerData?.subscription?.unsubscribe();
     };
@@ -75,9 +74,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     setError(null);
     const { error } = await supabase.auth.signOut();
     if (error) setError(error);
-    // Session and user will be set to null by onAuthStateChange
     setIsLoading(false);
     return { error };
+  };
+
+  const signInWithGoogle = async (): Promise<OAuthResponse> => {
+    setIsLoading(true);
+    setError(null);
+    const response = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        // redirectTo: 'http://localhost:5173/dashboard' // Optional: Ganti dengan URL production jika perlu
+      }
+    });
+    if (response.error) {
+      setError(response.error);
+    }
+    //isLoading akan dihandle oleh onAuthStateChange
+    return response;
   };
 
   const value = {
@@ -88,6 +102,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     signIn,
     signUp,
     signOut,
+    signInWithGoogle,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
