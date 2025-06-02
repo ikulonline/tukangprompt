@@ -1,0 +1,47 @@
+import React from 'react';
+import { Routes, Route, Outlet } from 'react-router-dom';
+import Navbar from './src/components/Navbar';
+import HomePage from './src/pages/HomePage';
+import LoginPage from './src/pages/LoginPage';
+import SignupPage from './src/pages/SignupPage';
+import DashboardPage from './src/pages/DashboardPage';
+import ProtectedRoute from './src/components/ProtectedRoute';
+import { AuthProvider } from './src/contexts/AuthContext';
+
+const AppLayout: React.FC = () => {
+  return (
+    <div className="min-h-screen flex flex-col bg-slate-900 text-slate-100">
+      <Navbar />
+      <main className="flex-grow container mx-auto px-4 py-8">
+        <Outlet />
+      </main>
+      <footer className="py-4 text-center text-slate-500 text-sm">
+        &copy; {new Date().getFullYear()} TukangPrompt. Dibangun dengan semangat & kode.
+      </footer>
+    </div>
+  );
+};
+
+const App: React.FC = () => {
+  return (
+    <AuthProvider>
+      <Routes>
+        <Route element={<AppLayout />}>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route path="/signup" element={<SignupPage />} />
+          <Route 
+            path="/dashboard" 
+            element={
+              <ProtectedRoute>
+                <DashboardPage />
+              </ProtectedRoute>
+            } 
+          />
+        </Route>
+      </Routes>
+    </AuthProvider>
+  );
+};
+
+export default App;
