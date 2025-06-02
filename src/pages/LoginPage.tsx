@@ -40,10 +40,21 @@ const LoginPage: React.FC = () => {
   const from = location.state?.from?.pathname || '/dashboard';
 
   const onSubmit: SubmitHandler<LoginFormInputs> = async (data) => {
-    setFormError(null);
+    setFormError(null); // Clear previous general form error
     const { error } = await signIn(data as SignInWithPasswordCredentials); 
     if (error) {
-      setFormError(error.message || "Gagal melakukan login. Periksa kembali email dan password Anda.");
+      // Supabase's default "Invalid login credentials" covers both "user not found"
+      // and "wrong password" for security reasons (prevents email enumeration).
+      // Providing more specific client-side messages for these two cases based on this
+      // single Supabase error is generally not possible or secure.
+      if (error.message && error.message.toLowerCase().includes('invalid login credentials')) {
+        setFormError("Kombinasi email dan password salah. Silakan periksa kembali.");
+      } else if (error.message && error.message.toLowerCase().includes('email not confirmed')) {
+        setFormError("Email Anda belum dikonfirmasi. Silakan periksa email Anda untuk link konfirmasi.");
+      } else {
+        // Fallback for other errors (network, server issues, etc.)
+        setFormError(error.message || "Terjadi kesalahan saat login. Silakan coba lagi nanti.");
+      }
     } else {
       navigate(from, { replace: true });
     }
