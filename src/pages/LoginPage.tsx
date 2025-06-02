@@ -24,9 +24,9 @@ const GoogleIcon: React.FC = () => (
 
 
 const LoginPage: React.FC = () => {
-  const { register, handleSubmit, formState: { errors }, trigger, clearErrors } = useForm<LoginFormInputs>({
+  const { register, handleSubmit, formState: { errors }, trigger } = useForm<LoginFormInputs>({
     mode: 'onSubmit', 
-    reValidateMode: 'onChange', // Keep this as it's the desired behavior if it works
+    reValidateMode: 'onChange', 
     defaultValues: { 
       email: '',
       password: ''
@@ -61,42 +61,38 @@ const LoginPage: React.FC = () => {
     if (error) {
       setFormError(error.message || "Gagal login dengan Google. Coba lagi nanti.");
     }
-    // Navigasi setelah login Google akan dihandle oleh onAuthStateChange -> ProtectedRoute
   };
 
-  // Destructure props from register to handle onChange manually
   const emailRegisterProps = register("email", { required: "Email tidak boleh kosong" });
   const passwordRegisterProps = register("password", { required: "Password tidak boleh kosong" });
 
   return (
     <div className="min-h-full flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <h2 className="mt-6 text-center text-3xl font-extrabold text-sky-400">
+        <h2 className="mt-6 text-center text-3xl font-extrabold text-sky-500 dark:text-sky-400">
           Login ke Akun Anda
         </h2>
-        <p className="mt-2 text-center text-sm text-slate-400">
+        <p className="mt-2 text-center text-sm text-slate-600 dark:text-slate-400">
           Atau{' '}
-          <Link to="/signup" className="font-medium text-sky-500 hover:text-sky-400">
+          <Link to="/signup" className="font-medium text-sky-600 hover:text-sky-500 dark:text-sky-500 dark:hover:text-sky-400">
             buat akun baru
           </Link>
         </p>
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-slate-800 py-8 px-4 shadow-xl ring-1 ring-slate-700 sm:rounded-lg sm:px-10">
+        <div className="bg-white dark:bg-slate-800 py-8 px-4 shadow-xl ring-1 ring-slate-200 dark:ring-slate-700 sm:rounded-lg sm:px-10">
           <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
             <Input
               label="Alamat Email"
               type="email"
               autoComplete="email"
               error={errors.email?.message}
-              // Spread rest of props from register
               name={emailRegisterProps.name}
               onBlur={emailRegisterProps.onBlur}
               ref={emailRegisterProps.ref}
               onChange={(e) => {
-                emailRegisterProps.onChange(e); // Call original RHF onChange
-                // If field is not empty, or if an error exists for it, trigger validation
+                emailRegisterProps.onChange(e); 
                 if (e.target.value.trim() !== '' || errors.email) {
                    trigger("email");
                 }
@@ -107,13 +103,11 @@ const LoginPage: React.FC = () => {
               type="password"
               autoComplete="current-password"
               error={errors.password?.message}
-               // Spread rest of props from register
               name={passwordRegisterProps.name}
               onBlur={passwordRegisterProps.onBlur}
               ref={passwordRegisterProps.ref}
               onChange={(e) => {
-                passwordRegisterProps.onChange(e); // Call original RHF onChange
-                // If field is not empty, or if an error exists for it, trigger validation
+                passwordRegisterProps.onChange(e);
                 if (e.target.value.trim() !== '' || errors.password) {
                     trigger("password");
                 }
@@ -121,7 +115,7 @@ const LoginPage: React.FC = () => {
             />
             
             {formError && (
-              <p className="text-sm text-red-400 text-center py-2">{formError}</p>
+              <p className="text-sm text-red-600 dark:text-red-400 text-center py-2">{formError}</p>
             )}
 
             <div>
@@ -134,10 +128,10 @@ const LoginPage: React.FC = () => {
           <div className="mt-6">
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-slate-600" />
+                <div className="w-full border-t border-slate-300 dark:border-slate-600" />
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-slate-800 text-slate-400">
+                <span className="px-2 bg-white dark:bg-slate-800 text-slate-500 dark:text-slate-400">
                   Atau lanjutkan dengan
                 </span>
               </div>
@@ -146,7 +140,7 @@ const LoginPage: React.FC = () => {
             <div className="mt-6">
               <Button 
                 variant="outline" 
-                className="w-full bg-slate-700 hover:bg-slate-600 border-slate-500" 
+                className="w-full dark:bg-slate-700 dark:hover:bg-slate-600 dark:border-slate-500" 
                 onClick={handleGoogleLogin}
                 isLoading={authLoading} 
                 type="button"

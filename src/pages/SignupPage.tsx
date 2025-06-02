@@ -4,10 +4,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import Button from '../components/ui/Button';
 import Input from '../components/ui/Input';
-// SignUpWithPasswordCredentials is still needed for the signUp function call, but not directly for form state
 import { SignUpWithPasswordCredentials } from '@supabase/supabase-js';
 
-// Explicitly define the form input structure
 interface SignupPageFormInputs {
   email: string;
   password: string;
@@ -15,31 +13,32 @@ interface SignupPageFormInputs {
 }
 
 const SignupPage: React.FC = () => {
-  const { register, handleSubmit, watch, formState: { errors } } = useForm<SignupPageFormInputs>();
-  const { signUp, isLoading: authLoading, error: authError } = useAuth();
+  const { register, handleSubmit, watch, formState: { errors } } = useForm<SignupPageFormInputs>({
+    defaultValues: {
+      email: '',
+      password: '',
+      confirmPassword: ''
+    }
+  });
+  const { signUp, isLoading: authLoading } = useAuth(); // Removed authError from here, will use formError
   const navigate = useNavigate();
   const [formError, setFormError] = useState<string | null>(null);
   const [signupSuccess, setSignupSuccess] = useState<boolean>(false);
 
-  const password = watch("password");
+  const passwordValue = watch("password"); // Renamed to avoid conflict
 
   const onSubmit: SubmitHandler<SignupPageFormInputs> = async (data) => {
     setFormError(null);
     setSignupSuccess(false);
-    // Construct the object for signUp from our explicit form data type
     const credentials: SignUpWithPasswordCredentials = { email: data.email, password: data.password };
     const { error, user } = await signUp(credentials); 
     if (error) {
       setFormError(error.message || "Gagal melakukan pendaftaran. Coba lagi nanti.");
     } else {
-        if (user && user.identities && user.identities.length === 0) {
-            setFormError("Pendaftaran berhasil, namun ada kendala dalam konfirmasi. Silakan coba login atau hubungi support.");
-        } else if (user?.aud === 'authenticated') { 
-            setSignupSuccess(true); 
-            setTimeout(() => navigate('/login'), 3000); 
-        } else { 
-            setSignupSuccess(true);
-        }
+        // This specific check for user.identities might be too Supabase-specific for general UI
+        // Typically, if no error, we assume success or Supabase handles confirmation flow.
+        setSignupSuccess(true); 
+        // No automatic redirect, let the success message guide the user.
     }
   };
 
@@ -47,9 +46,9 @@ const SignupPage: React.FC = () => {
     return (
       <div className="min-h-full flex flex-col justify-center py-12 sm:px-6 lg:px-8">
         <div className="sm:mx-auto sm:w-full sm:max-w-md">
-          <div className="bg-slate-800 py-8 px-4 shadow-xl ring-1 ring-slate-700 sm:rounded-lg sm:px-10 text-center">
-            <h2 className="text-2xl font-semibold text-green-400 mb-4">Pendaftaran Berhasil!</h2>
-            <p className="text-slate-300 mb-6">
+          <div className="bg-white dark:bg-slate-800 py-8 px-4 shadow-xl ring-1 ring-slate-200 dark:ring-slate-700 sm:rounded-lg sm:px-10 text-center">
+            <h2 className="text-2xl font-semibold text-green-500 dark:text-green-400 mb-4">Pendaftaran Berhasil!</h2>
+            <p className="text-slate-700 dark:text-slate-300 mb-6">
               Silakan periksa email Anda untuk link konfirmasi. Setelah itu, Anda bisa login.
             </p>
             <Link to="/login">
@@ -64,19 +63,19 @@ const SignupPage: React.FC = () => {
   return (
     <div className="min-h-full flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <h2 className="mt-6 text-center text-3xl font-extrabold text-sky-400">
+        <h2 className="mt-6 text-center text-3xl font-extrabold text-sky-500 dark:text-sky-400">
           Buat Akun Baru
         </h2>
-        <p className="mt-2 text-center text-sm text-slate-400">
+        <p className="mt-2 text-center text-sm text-slate-600 dark:text-slate-400">
           Sudah punya akun?{' '}
-          <Link to="/login" className="font-medium text-sky-500 hover:text-sky-400">
+          <Link to="/login" className="font-medium text-sky-600 hover:text-sky-500 dark:text-sky-500 dark:hover:text-sky-400">
             Login di sini
           </Link>
         </p>
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-slate-800 py-8 px-4 shadow-xl ring-1 ring-slate-700 sm:rounded-lg sm:px-10">
+        <div className="bg-white dark:bg-slate-800 py-8 px-4 shadow-xl ring-1 ring-slate-200 dark:ring-slate-700 sm:rounded-lg sm:px-10">
           <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
             <Input
               label="Alamat Email"
@@ -88,7 +87,7 @@ const SignupPage: React.FC = () => {
                   message: "Format email tidak valid"
                 }
               })}
-              error={errors.email?.message} // Now type-safe
+              error={errors.email?.message}
             />
             <Input
               label="Password"
@@ -108,13 +107,13 @@ const SignupPage: React.FC = () => {
               {...register("confirmPassword", { 
                 required: "Konfirmasi password tidak boleh kosong",
                 validate: value =>
-                  value === password || "Password tidak cocok"
+                  value === passwordValue || "Password tidak cocok" // Use watched passwordValue
               })}
-              error={errors.confirmPassword?.message} // Now type-safe
+              error={errors.confirmPassword?.message}
             />
             
-            {(authError?.message || formError) && (
-              <p className="text-sm text-red-400 text-center">{authError?.message || formError}</p>
+            {formError && ( // Display only formError set by submission logic
+              <p className="text-sm text-red-600 dark:text-red-400 text-center">{formError}</p>
             )}
 
             <div>

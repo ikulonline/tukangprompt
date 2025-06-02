@@ -2,13 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
+html {
+  color-scheme: light dark; /* Inform the browser about supported color schemes */
+}
+
 html, body, #root {
   height: 100%;
 }
 
 body {
-  background-color: #0f172a; /* slate-900 */
-  color: #e2e8f0; /* slate-200 */
+  /* Default to light mode colors, dark mode will override via AppLayout/html.dark */
+  @apply bg-white text-slate-800;
   font-family: Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
@@ -16,7 +20,13 @@ body {
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
+
+html.dark body {
+  @apply bg-slate-900 text-slate-200;
+}
+
 
 /* Custom scrollbar */
 ::-webkit-scrollbar {
@@ -24,18 +34,11 @@ body {
   height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: #1e293b; /* slate-800 */
+  @apply bg-slate-200 dark:bg-slate-800;
 }
 ::-webkit-scrollbar-thumb {
-  background: #38bdf8; /* sky-500 */
-  border-radius: 4px;
+  @apply bg-sky-500 rounded;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #0ea5e9; /* sky-600 */
+  @apply bg-sky-600;
 }
-
-/*
-  Note: Selection styles are already applied via Tailwind classes
-  on the body tag in index.html (selection:bg-sky-500 selection:text-white).
-  If those classes are kept, explicit ::selection CSS here is redundant.
-*/

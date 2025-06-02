@@ -81,16 +81,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const signInWithGoogle = async (): Promise<OAuthResponse> => {
     setIsLoading(true);
     setError(null);
+    // Menghapus opsi redirectTo agar Supabase menggunakan Site URL dari dashboard
+    // atau default redirect ke halaman saat ini.
     const response = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: {
-        // redirectTo: 'http://localhost:5173/dashboard' // Optional: Ganti dengan URL production jika perlu
-      }
+      // options: {
+      //   redirectTo: 'http://localhost:5173/dashboard' // Biarkan Supabase yang menangani ini berdasarkan Site URL
+      // }
     });
     if (response.error) {
       setError(response.error);
     }
-    //isLoading akan dihandle oleh onAuthStateChange
+    // isLoading akan dihandle oleh onAuthStateChange
     return response;
   };
 
