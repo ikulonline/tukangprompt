@@ -24,9 +24,9 @@ const GoogleIcon: React.FC = () => (
 
 
 const LoginPage: React.FC = () => {
-  const { register, handleSubmit, formState: { errors }, trigger } = useForm<LoginFormInputs>({
+  const { register, handleSubmit, formState: { errors }, trigger, clearErrors } = useForm<LoginFormInputs>({
     mode: 'onSubmit', 
-    reValidateMode: 'onChange',
+    reValidateMode: 'onChange', // Keep this as it's the desired behavior if it works
     defaultValues: { 
       email: '',
       password: ''
@@ -64,6 +64,10 @@ const LoginPage: React.FC = () => {
     // Navigasi setelah login Google akan dihandle oleh onAuthStateChange -> ProtectedRoute
   };
 
+  // Destructure props from register to handle onChange manually
+  const emailRegisterProps = register("email", { required: "Email tidak boleh kosong" });
+  const passwordRegisterProps = register("password", { required: "Password tidak boleh kosong" });
+
   return (
     <div className="min-h-full flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
@@ -84,26 +88,36 @@ const LoginPage: React.FC = () => {
             <Input
               label="Alamat Email"
               type="email"
-              {...register("email", { 
-                required: "Email tidak boleh kosong",
-                onChange: () => {
-                  if (errors.email) trigger("email");
-                }
-              })}
-              error={errors.email?.message}
               autoComplete="email"
+              error={errors.email?.message}
+              // Spread rest of props from register
+              name={emailRegisterProps.name}
+              onBlur={emailRegisterProps.onBlur}
+              ref={emailRegisterProps.ref}
+              onChange={(e) => {
+                emailRegisterProps.onChange(e); // Call original RHF onChange
+                // If field is not empty, or if an error exists for it, trigger validation
+                if (e.target.value.trim() !== '' || errors.email) {
+                   trigger("email");
+                }
+              }}
             />
             <Input
               label="Password"
               type="password"
-              {...register("password", { 
-                required: "Password tidak boleh kosong",
-                onChange: () => {
-                  if (errors.password) trigger("password");
-                }
-              })}
-              error={errors.password?.message}
               autoComplete="current-password"
+              error={errors.password?.message}
+               // Spread rest of props from register
+              name={passwordRegisterProps.name}
+              onBlur={passwordRegisterProps.onBlur}
+              ref={passwordRegisterProps.ref}
+              onChange={(e) => {
+                passwordRegisterProps.onChange(e); // Call original RHF onChange
+                // If field is not empty, or if an error exists for it, trigger validation
+                if (e.target.value.trim() !== '' || errors.password) {
+                    trigger("password");
+                }
+              }}
             />
             
             {formError && (
