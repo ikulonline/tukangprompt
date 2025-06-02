@@ -1,11 +1,14 @@
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
 import { Session, User, AuthError, SignUpWithPasswordCredentials, SignInWithPasswordCredentials, Subscription, OAuthResponse } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabaseClient';
+import { UserProfile } from '../types'; // Import UserProfile
 
 interface AuthContextType {
   session: Session | null;
   user: User | null;
+  profile: UserProfile | null; // Add profile
   isLoading: boolean;
+  profileLoading: boolean; // Add profileLoading
   error: AuthError | null;
   signIn: (credentials: SignInWithPasswordCredentials) => Promise<{ error: AuthError | null }>;
   signUp: (credentials: SignUpWithPasswordCredentials) => Promise<{ error: AuthError | null, session: Session | null, user: User | null }>;
@@ -22,27 +25,70 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<UserProfile | null>(null); // Add profile state
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [profileLoading, setProfileLoading] = useState<boolean>(true); // Add profileLoading state
   const [error, setError] = useState<AuthError | null>(null);
+
+  const fetchUserProfile = async (userId: string) => {
+    setProfileLoading(true);
+    try {
+      const { data, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+      if (profileError) {
+        console.error('Error fetching user profile:', profileError);
+        setProfile(null);
+      } else {
+        setProfile(data as UserProfile);
+      }
+    } catch (e) {
+      console.error('Unexpected error fetching profile:', e);
+      setProfile(null);
+    } finally {
+      setProfileLoading(false);
+    }
+  };
 
   useEffect(() => {
     setIsLoading(true);
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
+    setProfileLoading(true); // Start profile loading as well
+
+    supabase.auth.getSession().then(async ({ data: { session: currentSession } }) => {
+      setSession(currentSession);
+      const currentUser = currentSession?.user ?? null;
+      setUser(currentUser);
+      if (currentUser) {
+        await fetchUserProfile(currentUser.id);
+      } else {
+        setProfile(null);
+        setProfileLoading(false);
+      }
       setIsLoading(false);
     }).catch(err => {
       console.error("Error getting session:", err);
       setError(err as AuthError);
+      setProfile(null);
       setIsLoading(false);
+      setProfileLoading(false);
     });
 
     const { data: authListenerData } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        setError(null); // Clear previous errors on auth state change
-        setIsLoading(false);
+      async (_event, newSession) => {
+        setSession(newSession);
+        const newUser = newSession?.user ?? null;
+        setUser(newUser);
+        setError(null); 
+        if (newUser) {
+          await fetchUserProfile(newUser.id);
+        } else {
+          setProfile(null);
+          setProfileLoading(false);
+        }
+        setIsLoading(false); // Auth loading done
       }
     );
 
@@ -54,52 +100,53 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const signIn = async (credentials: SignInWithPasswordCredentials) => {
     setIsLoading(true);
     setError(null);
-    const { error } = await supabase.auth.signInWithPassword(credentials);
-    if (error) setError(error);
+    const { error: signInError } = await supabase.auth.signInWithPassword(credentials);
+    if (signInError) setError(signInError);
+    // User and profile will be updated by onAuthStateChange
     setIsLoading(false);
-    return { error };
+    return { error: signInError };
   };
 
   const signUp = async (credentials: SignUpWithPasswordCredentials) => {
     setIsLoading(true);
     setError(null);
-    const { data, error } = await supabase.auth.signUp(credentials);
-    if (error) setError(error);
+    const { data, error: signUpError } = await supabase.auth.signUp(credentials);
+    if (signUpError) setError(signUpError);
+    // User and profile will be updated by onAuthStateChange if signup is successful and trigger runs
     setIsLoading(false);
-    return { error, session: data.session, user: data.user };
+    return { error: signUpError, session: data.session, user: data.user };
   };
 
   const signOut = async () => {
     setIsLoading(true);
     setError(null);
-    const { error } = await supabase.auth.signOut();
-    if (error) setError(error);
+    const { error: signOutError } = await supabase.auth.signOut();
+    if (signOutError) setError(signOutError);
+    // User and profile will be set to null by onAuthStateChange
+    setProfile(null); 
     setIsLoading(false);
-    return { error };
+    return { error: signOutError };
   };
 
   const signInWithGoogle = async (): Promise<OAuthResponse> => {
     setIsLoading(true);
     setError(null);
-    // Menghapus opsi redirectTo agar Supabase menggunakan Site URL dari dashboard
-    // atau default redirect ke halaman saat ini.
     const response = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      // options: {
-      //   redirectTo: 'http://localhost:5173/dashboard' // Biarkan Supabase yang menangani ini berdasarkan Site URL
-      // }
     });
     if (response.error) {
       setError(response.error);
     }
-    // isLoading akan dihandle oleh onAuthStateChange
+    // isLoading, user, and profile will be handled by onAuthStateChange
     return response;
   };
 
   const value = {
     session,
     user,
+    profile, // Provide profile
     isLoading,
+    profileLoading, // Provide profileLoading
     error,
     signIn,
     signUp,

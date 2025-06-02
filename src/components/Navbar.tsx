@@ -18,7 +18,7 @@ const MoonIcon: React.FC<{ className?: string }> = ({ className }) => (
 );
 
 const Navbar: React.FC = () => {
-  const { user, signOut, isLoading: authLoading } = useAuth();
+  const { user, profile, signOut, isLoading: authLoading, profileLoading } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
@@ -31,6 +31,8 @@ const Navbar: React.FC = () => {
     }
   };
 
+  const isLoading = authLoading || profileLoading;
+
   return (
     <nav className="bg-slate-100 dark:bg-slate-800 shadow-md sticky top-0 z-50 transition-colors duration-300">
       <div className="container mx-auto px-4 py-3 flex justify-between items-center">
@@ -39,11 +41,18 @@ const Navbar: React.FC = () => {
           <span className="bg-clip-text text-transparent bg-gradient-to-r from-pink-600 to-rose-500 dark:from-pink-500 dark:to-rose-400">Prompt</span>
         </Link>
         <div className="flex items-center space-x-3">
-          {authLoading ? (
+          {isLoading ? (
             <span className="text-sm text-slate-500 dark:text-slate-400">Memuat...</span>
           ) : user ? (
             <>
-              <span className="text-sm text-slate-700 dark:text-slate-300 hidden sm:block">{user.email}</span>
+              {profile?.role === 'admin' && (
+                <Link to="/admin/dashboard">
+                  <Button variant="ghost" size="sm" className="text-red-500 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900">
+                    Admin
+                  </Button>
+                </Link>
+              )}
+              <span className="text-sm text-slate-700 dark:text-slate-300 hidden sm:block">{profile?.full_name || user.email}</span>
               <Button onClick={handleLogout} variant="secondary" size="sm">
                 Logout
               </Button>
