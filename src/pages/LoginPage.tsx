@@ -24,8 +24,11 @@ const GoogleIcon: React.FC = () => (
 
 
 const LoginPage: React.FC = () => {
-  const { register, handleSubmit, formState: { errors } } = useForm<LoginFormInputs>();
-  const { signIn, signInWithGoogle, isLoading: authLoading, error: authError } = useAuth();
+  const { register, handleSubmit, formState: { errors } } = useForm<LoginFormInputs>({
+    mode: 'onSubmit', // Validate on first submission attempt
+    reValidateMode: 'onChange' // Re-validate on change after first submission
+  });
+  const { signIn, signInWithGoogle, isLoading: authLoading } = useAuth(); // Removed authError as formError will be primary
   const navigate = useNavigate();
   const location = useLocation();
   const [formError, setFormError] = useState<string | null>(null);
@@ -83,8 +86,8 @@ const LoginPage: React.FC = () => {
               autoComplete="current-password"
             />
             
-            {(authError?.message || formError) && !errors.email && !errors.password && (
-              <p className="text-sm text-red-400 text-center">{authError?.message || formError}</p>
+            {formError && (
+              <p className="text-sm text-red-400 text-center py-2">{formError}</p>
             )}
 
             <div>
@@ -111,17 +114,14 @@ const LoginPage: React.FC = () => {
                 variant="outline" 
                 className="w-full bg-slate-700 hover:bg-slate-600 border-slate-500" 
                 onClick={handleGoogleLogin}
-                isLoading={authLoading && !formError && !errors.email && !errors.password} // Hanya loading jika Google login yang aktif
-                type="button" // Pastikan type button agar tidak submit form
+                isLoading={authLoading} 
+                type="button"
               >
                 <GoogleIcon />
                 Login dengan Google
               </Button>
             </div>
-             {(authError?.message || formError) && (errors.email || errors.password) && (
-              // Menampilkan error umum jika ada error spesifik form juga (agar tidak duplikat dengan error di atas)
-               <p className="mt-2 text-sm text-red-400 text-center">{authError?.message || formError}</p>
-            )}
+            {/* Removed the second general error display block as formError above covers it */}
           </div>
         </div>
       </div>
