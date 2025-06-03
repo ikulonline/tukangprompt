@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
@@ -28,7 +29,7 @@ const HomePage: React.FC = () => {
         </p>
       </header>
 
-      <main className="relative z-10">
+      <main className="relative z-10 flex flex-col items-center">
         {isLoading ? (
           <LoadingSpinner size="lg" />
         ) : (
