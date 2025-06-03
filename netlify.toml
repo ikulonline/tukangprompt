@@ -1,8 +1,8 @@
-[build]
-  command = "npm run build" # Perintah untuk membangun proyek Anda (sesuai package.json)
-  publish = "dist"         # Direktori output setelah build (Vite defaultnya 'dist')
+[functions]
+  directory = "netlify/functions/"
+  node_bundler = "esbuild"
 
 [[redirects]]
-  from = "/*"
-  to = "/index.html"
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
   status = 200

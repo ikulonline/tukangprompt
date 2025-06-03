@@ -1,5 +1,4 @@
-
-
+// src/components/forms/ImagePromptForm.tsx
 import React, { useState, ChangeEvent, FormEvent } from 'react';
 import { SelectOption, RadioOption } from '../../types';
 import Input from '../ui/Input';
@@ -9,6 +8,7 @@ import RadioGroup from '../ui/RadioGroup';
 import Button from '../ui/Button';
 import TooltipIcon from '../ui/TooltipIcon';
 import FormSection from '../ui/FormSection';
+import ImagePromptOutput from '../ImagePromptOutput'; // BARU: Impor komponen output
 
 interface FormState {
   subjectType: string;
@@ -56,7 +56,13 @@ const initialFormState: FormState = {
   negativePrompt: '',
 };
 
-// Options for dropdowns and radio groups
+// BARU: State untuk hasil prompt, loading, dan error
+interface GeneratedPrompts {
+  dall_e_prompt: string;
+  midjourney_prompt: string;
+}
+
+// Opsi-opsi tetap sama
 const subjectTypeOptions: SelectOption[] = [
   { value: '', label: 'Pilih tipe subjek...' },
   { value: 'manusia', label: 'Manusia' },
@@ -67,13 +73,11 @@ const subjectTypeOptions: SelectOption[] = [
   { value: 'arsitektur', label: 'Arsitektur' },
   { value: 'abstrak', label: 'Abstrak' },
 ];
-
 const subjectCountOptions: RadioOption[] = [
   { value: 'Satu', label: 'Satu' },
   { value: 'Beberapa', label: 'Beberapa' },
   { value: 'Banyak', label: 'Banyak' },
 ];
-
 const settingTimeOptions: RadioOption[] = [
   { value: 'Pagi', label: 'Pagi' },
   { value: 'Siang', label: 'Siang' },
@@ -82,7 +86,6 @@ const settingTimeOptions: RadioOption[] = [
   { value: 'Senja', label: 'Senja (Sunset)' },
   { value: 'Fajar', label: 'Fajar (Sunrise)' },
 ];
-
 const settingWeatherOptions: SelectOption[] = [
   { value: '', label: 'Pilih cuaca (opsional)...' },
   { value: 'cerah', label: 'Cerah' },
@@ -92,7 +95,6 @@ const settingWeatherOptions: SelectOption[] = [
   { value: 'berkabut', label: 'Berkabut' },
   { value: 'badai', label: 'Badai' },
 ];
-
 const settingAtmosphereOptions: SelectOption[] = [
   { value: '', label: 'Pilih atmosfer...' },
   { value: 'tenang', label: 'Tenang & Damai' },
@@ -103,7 +105,6 @@ const settingAtmosphereOptions: SelectOption[] = [
   { value: 'romantis', label: 'Romantis' },
   { value: 'megah', label: 'Megah & Epik' },
 ];
-
 const cameraAngleOptions: SelectOption[] = [
   { value: 'Eye-level', label: 'Eye-level (Sejajar Mata)' },
   { value: 'Low angle', label: 'Low Angle (Dari Bawah)' },
@@ -112,7 +113,6 @@ const cameraAngleOptions: SelectOption[] = [
   { value: 'Worms eye view', label: 'Worm\'s Eye View (Pandangan Cacing)' },
   { value: 'Dutch angle', label: 'Dutch Angle (Miring)' },
 ];
-
 const shotDistanceOptions: SelectOption[] = [
   { value: 'Extreme Close-up', label: 'Extreme Close-up' },
   { value: 'Close-up', label: 'Close-up' },
@@ -121,7 +121,6 @@ const shotDistanceOptions: SelectOption[] = [
   { value: 'Full shot', label: 'Full Shot (Seluruh badan)' },
   { value: 'Long shot', label: 'Long Shot (Subjek terlihat kecil)' },
 ];
-
 const artisticCategoryOptions: SelectOption[] = [
   { value: '', label: 'Pilih kategori gaya...' },
   { value: 'fotorealistis', label: 'Fotorealistis' },
@@ -134,8 +133,6 @@ const artisticCategoryOptions: SelectOption[] = [
   { value: 'seni_konsep', label: 'Seni Konsep (Concept Art)' },
   { value: 'sketsa', label: 'Sketsa' },
 ];
-
-// Static sub-styles for simplicity
 const artisticSubStyleOptions: SelectOption[] = [
   { value: '', label: 'Pilih sub-gaya (opsional)...' },
   { value: 'impresionisme', label: 'Impresionisme (Lukisan)' },
@@ -148,7 +145,6 @@ const artisticSubStyleOptions: SelectOption[] = [
   { value: 'vintage_cartoon', label: 'Vintage Cartoon (Kartun)' },
   { value: 'chibi', label: 'Chibi (Anime)' },
 ];
-
 const lightingTypeOptions: SelectOption[] = [
   { value: '', label: 'Pilih tipe pencahayaan...' },
   { value: 'alami', label: 'Cahaya Alami (Natural Light)' },
@@ -160,7 +156,6 @@ const lightingTypeOptions: SelectOption[] = [
   { value: 'blue_hour', label: 'Blue Hour' },
   { value: 'dramatic', label: 'Cahaya Dramatis' },
 ];
-
 const colorPaletteOptions: SelectOption[] = [
   { value: '', label: 'Pilih deskripsi palet...' },
   { value: 'monokromatik', label: 'Monokromatik' },
@@ -173,7 +168,6 @@ const colorPaletteOptions: SelectOption[] = [
   { value: 'vibrant', label: 'Cerah & Menyala (Vibrant)' },
   { value: 'gelap', label: 'Gelap & Suram (Dark Tones)' },
 ];
-
 const detailLevelOptions: SelectOption[] = [
   { value: 'Sangat Sederhana', label: 'Sangat Sederhana' },
   { value: 'Sederhana', label: 'Sederhana' },
@@ -182,7 +176,6 @@ const detailLevelOptions: SelectOption[] = [
   { value: 'Sangat Detail', label: 'Sangat Detail' },
   { value: 'Ultra Detail', label: 'Ultra Detail' },
 ];
-
 const aspectRatioOptions: RadioOption[] = [
   { value: '1:1', label: '1:1 (Persegi)' },
   { value: '16:9', label: '16:9 (Landscape)' },
@@ -194,6 +187,11 @@ const aspectRatioOptions: RadioOption[] = [
 
 const ImagePromptForm: React.FC = () => {
   const [formState, setFormState] = useState<FormState>(initialFormState);
+  // BARU: State untuk hasil, loading, error
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [generatedPrompts, setGeneratedPrompts] = useState<GeneratedPrompts | null>(null);
+  const [submissionError, setSubmissionError] = useState<string | null>(null);
+
 
   const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -213,18 +211,47 @@ const ImagePromptForm: React.FC = () => {
 
   const handleReset = () => {
     setFormState(initialFormState);
+    setGeneratedPrompts(null); // Reset hasil juga
+    setSubmissionError(null); // Reset error juga
+    setIsLoading(false);
   };
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  // BARU: Logika handleSubmit diperbarui
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    console.log("Form Parameters:", formState);
-    // TODO: Implement actual prompt generation logic
-    alert("Parameter prompt telah dicetak ke konsol browser!");
+    setIsLoading(true);
+    setGeneratedPrompts(null);
+    setSubmissionError(null);
+
+    try {
+      const response = await fetch('/api/generate-image-prompt', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formState),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || `Gagal menghasilkan prompt (status ${response.status})`);
+      }
+
+      setGeneratedPrompts(data as GeneratedPrompts);
+    } catch (error: any) {
+      console.error("Error submitting form:", error);
+      setSubmissionError(error.message || "Terjadi kesalahan tak terduga saat mengirimkan formulir.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-8">
-      <FormSection title="Subjek Utama">
+    <> {/* BARU: Fragment untuk membungkus form dan output */}
+      <form onSubmit={handleSubmit} className="space-y-8">
+        {/* ... semua FormSection tetap sama ... */}
+        <FormSection title="Subjek Utama">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Select
             label="Tipe Subjek"
@@ -416,7 +443,7 @@ const ImagePromptForm: React.FC = () => {
                 options={aspectRatioOptions}
                 selectedValue={formState.aspectRatio}
                 onChange={handleRadioChange}
-                inline={false} // Display options vertically for better fit
+                inline={false} 
             />
         </div>
          <div className="flex items-center mt-1">
@@ -439,15 +466,19 @@ const ImagePromptForm: React.FC = () => {
       </FormSection>
 
 
-      <div className="flex flex-col sm:flex-row justify-end space-y-3 sm:space-y-0 sm:space-x-4 pt-6 border-t border-slate-200 dark:border-slate-700">
-        <Button type="button" variant="outline" onClick={handleReset} className="w-full sm:w-auto">
-          Reset Semua Parameter
-        </Button>
-        <Button type="submit" variant="primary" className="w-full sm:w-auto">
-          Hasilkan Prompt!
-        </Button>
-      </div>
-    </form>
+        <div className="flex flex-col sm:flex-row justify-end space-y-3 sm:space-y-0 sm:space-x-4 pt-6 border-t border-slate-200 dark:border-slate-700">
+          <Button type="button" variant="outline" onClick={handleReset} className="w-full sm:w-auto" disabled={isLoading}>
+            Reset Semua Parameter
+          </Button>
+          <Button type="submit" variant="primary" className="w-full sm:w-auto" isLoading={isLoading}>
+            {isLoading ? 'Menghasilkan...' : 'Hasilkan Prompt!'}
+          </Button>
+        </div>
+      </form>
+
+      {/* BARU: Render komponen output di bawah form */}
+      <ImagePromptOutput prompts={generatedPrompts} isLoading={isLoading} error={submissionError} />
+    </>
   );
 };
 
