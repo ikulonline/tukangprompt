@@ -1,4 +1,5 @@
 
+
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 // Placeholder values for environments where .env might not be accessible

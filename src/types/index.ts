@@ -1,4 +1,5 @@
 
+
 // src/types/index.ts
 export interface UserProfile {
   id: string;

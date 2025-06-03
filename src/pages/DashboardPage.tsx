@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import { useAuth } from '../hooks/useAuth';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
@@ -19,7 +20,7 @@ const DashboardPage: React.FC = () => {
     <div className="space-y-8">
       <div className="bg-white dark:bg-slate-800 shadow-xl ring-1 ring-slate-200 dark:ring-slate-700 rounded-lg p-6 sm:p-8">
         <h1 className="text-3xl font-bold text-sky-600 dark:text-sky-400 mb-2">
-          Dashboard PromptMaster AI
+          Dashboard TukangPrompt
         </h1>
         {user && (
           <p className="text-lg text-slate-700 dark:text-slate-300">

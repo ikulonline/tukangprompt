@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
 import { Session, User, AuthError, SignUpWithPasswordCredentials, SignInWithPasswordCredentials, Subscription, OAuthResponse } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabaseClient';
