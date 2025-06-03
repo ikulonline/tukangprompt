@@ -1,5 +1,5 @@
 // src/components/forms/ImagePromptForm.tsx
-import React, { useState, ChangeEvent, FormEvent } from 'react';
+import React, { useState, ChangeEvent, FormEvent, useRef, useEffect } from 'react'; // BARU: Impor useRef, useEffect
 import { SelectOption, RadioOption } from '../../types';
 import Input from '../ui/Input';
 import Textarea from '../ui/Textarea';
@@ -8,7 +8,7 @@ import RadioGroup from '../ui/RadioGroup';
 import Button from '../ui/Button';
 import TooltipIcon from '../ui/TooltipIcon';
 import FormSection from '../ui/FormSection';
-import ImagePromptOutput from '../ImagePromptOutput'; // BARU: Impor komponen output
+import ImagePromptOutput from '../ImagePromptOutput';
 
 interface FormState {
   subjectType: string;
@@ -56,7 +56,6 @@ const initialFormState: FormState = {
   negativePrompt: '',
 };
 
-// BARU: State untuk hasil prompt, loading, dan error
 interface GeneratedPrompts {
   dall_e_prompt: string;
   midjourney_prompt: string;
@@ -187,11 +186,17 @@ const aspectRatioOptions: RadioOption[] = [
 
 const ImagePromptForm: React.FC = () => {
   const [formState, setFormState] = useState<FormState>(initialFormState);
-  // BARU: State untuk hasil, loading, error
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [generatedPrompts, setGeneratedPrompts] = useState<GeneratedPrompts | null>(null);
   const [submissionError, setSubmissionError] = useState<string | null>(null);
+  const outputRef = useRef<HTMLDivElement>(null); // BARU: Ref untuk elemen output
 
+  // BARU: useEffect untuk auto-scroll
+  useEffect(() => {
+    if (generatedPrompts && !isLoading && !submissionError && outputRef.current) {
+      outputRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [generatedPrompts, isLoading, submissionError]);
 
   const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -211,12 +216,11 @@ const ImagePromptForm: React.FC = () => {
 
   const handleReset = () => {
     setFormState(initialFormState);
-    setGeneratedPrompts(null); // Reset hasil juga
-    setSubmissionError(null); // Reset error juga
+    setGeneratedPrompts(null);
+    setSubmissionError(null);
     setIsLoading(false);
   };
 
-  // BARU: Logika handleSubmit diperbarui
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
@@ -248,9 +252,8 @@ const ImagePromptForm: React.FC = () => {
   };
 
   return (
-    <> {/* BARU: Fragment untuk membungkus form dan output */}
+    <>
       <form onSubmit={handleSubmit} className="space-y-8">
-        {/* ... semua FormSection tetap sama ... */}
         <FormSection title="Subjek Utama">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Select
@@ -261,7 +264,7 @@ const ImagePromptForm: React.FC = () => {
             onChange={handleChange}
             containerClassName="flex-grow"
           />
-          <div className="flex items-end"> {/* Wrapper for RadioGroup to align with label style of Select */}
+          <div className="flex items-end">
              <RadioGroup
                 label="Jumlah Subjek"
                 name="subjectCount"
@@ -476,8 +479,10 @@ const ImagePromptForm: React.FC = () => {
         </div>
       </form>
 
-      {/* BARU: Render komponen output di bawah form */}
-      <ImagePromptOutput prompts={generatedPrompts} isLoading={isLoading} error={submissionError} />
+      {/* BARU: Tambahkan ref ke div pembungkus ImagePromptOutput */}
+      <div ref={outputRef}>
+        <ImagePromptOutput prompts={generatedPrompts} isLoading={isLoading} error={submissionError} />
+      </div>
     </>
   );
 };
