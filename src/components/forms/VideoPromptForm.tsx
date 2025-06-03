@@ -1,14 +1,14 @@
 // src/components/forms/VideoPromptForm.tsx
-import React, { useState, ChangeEvent, FormEvent } from 'react';
-import { VideoPromptFormState, SelectOption, RadioOption } from '../../types'; // Impor tipe yang relevan
+import React, { useState, ChangeEvent, FormEvent, useRef, useEffect } from 'react';
+// BARU: Impor GeneratedVideoPrompts
+import { VideoPromptFormState, SelectOption, RadioOption, GeneratedVideoPrompts } from '../../types';
 import Input from '../ui/Input';
 import Textarea from '../ui/Textarea';
 import Select from '../ui/Select';
 import Button from '../ui/Button';
 import FormSection from '../ui/FormSection';
 import TooltipIcon from '../ui/TooltipIcon';
-// Impor RadioGroup jika diperlukan untuk Video (misal aspect ratio)
-// import RadioGroup from '../ui/RadioGroup';
+import VideoPromptOutput from '../VideoPromptOutput'; // BARU
 
 const initialVideoFormState: VideoPromptFormState = {
   sceneDescription: '',
@@ -17,7 +17,6 @@ const initialVideoFormState: VideoPromptFormState = {
   cameraMovementSpeed: 'Sedang',
   videoActionIntensity: 'Sedang',
   overallVideoMood: 'Epik',
-  // Inisialisasi parameter yang mungkin diambil dari ImagePromptForm
   subjectType: '',
   subjectDescription: '',
   settingLocation: '',
@@ -74,7 +73,6 @@ const videoMoodOptions: SelectOption[] = [
   { value: 'Energik', label: 'Energik & Semangat' },
 ];
 
-// Opsi yang mungkin di-share atau dimodifikasi dari ImagePromptForm
 const subjectTypeOptions: SelectOption[] = [
     { value: '', label: 'Pilih tipe subjek...' },
     { value: 'manusia', label: 'Manusia' },
@@ -96,7 +94,7 @@ const artisticCategoryOptions: SelectOption[] = [
     { value: 'vfx_heavy', label: 'Banyak Efek Visual (VFX)'},
 ];
 
-const aspectRatioVideoOptions: RadioOption[] = [
+const aspectRatioVideoOptions: SelectOption[] = [ // Mengubah ke SelectOption untuk konsistensi penggunaan Select
   { value: '16:9', label: '16:9 (Landscape Umum)' },
   { value: '9:16', label: '9:16 (Portrait/Story)' },
   { value: '1:1', label: '1:1 (Persegi)' },
@@ -108,8 +106,15 @@ const aspectRatioVideoOptions: RadioOption[] = [
 const VideoPromptForm: React.FC = () => {
   const [formState, setFormState] = useState<VideoPromptFormState>(initialVideoFormState);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  // const [generatedPrompts, setGeneratedPrompts] = useState<GeneratedVideoPrompts | null>(null); // Akan digunakan nanti
+  const [generatedVideoPrompts, setGeneratedVideoPrompts] = useState<GeneratedVideoPrompts | null>(null); // BARU
   const [submissionError, setSubmissionError] = useState<string | null>(null);
+  const outputRef = useRef<HTMLDivElement>(null); // BARU
+
+  useEffect(() => { // BARU: Auto-scroll
+    if (generatedVideoPrompts && !isLoading && !submissionError && outputRef.current) {
+      outputRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [generatedVideoPrompts, isLoading, submissionError]);
 
   const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -119,17 +124,12 @@ const VideoPromptForm: React.FC = () => {
     }));
   };
 
-  const handleRadioChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormState(prevState => ({
-        ...prevState,
-        [name]: value,
-    }));
-  };
+  // handleRadioChange tidak lagi diperlukan jika semua menggunakan Select
+  // const handleRadioChange = (e: ChangeEvent<HTMLInputElement>) => { ... };
 
   const handleReset = () => {
     setFormState(initialVideoFormState);
-    // setGeneratedPrompts(null); // Akan digunakan nanti
+    setGeneratedVideoPrompts(null); // BARU
     setSubmissionError(null);
     setIsLoading(false);
   };
@@ -137,14 +137,30 @@ const VideoPromptForm: React.FC = () => {
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsLoading(true);
-    // setGeneratedPrompts(null); // Akan digunakan nanti
+    setGeneratedVideoPrompts(null); // BARU
     setSubmissionError(null);
-    console.log("Video form submitted:", formState);
-    // Logika untuk mengirim ke backend Netlify Function akan ditambahkan di sini
-    // Untuk sekarang, kita hanya log dan set loading ke false setelah delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    setSubmissionError("Fungsi backend untuk video belum diimplementasikan.");
-    setIsLoading(false);
+
+    try {
+      const response = await fetch('/api/generate-video-prompt', { // BARU: Endpoint
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formState),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || `Gagal menghasilkan prompt video (status ${response.status})`);
+      }
+      setGeneratedVideoPrompts(data as GeneratedVideoPrompts); // BARU
+    } catch (error: any) {
+      console.error("Error submitting video form:", error);
+      setSubmissionError(error.message || "Terjadi kesalahan tak terduga saat mengirimkan formulir video.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -217,20 +233,10 @@ const VideoPromptForm: React.FC = () => {
              <Select
                 label="Aspect Ratio Video"
                 name="aspectRatio"
-                options={aspectRatioVideoOptions.map(opt => ({value: opt.value, label: opt.label}))} // Sesuaikan jika RadioGroup digunakan
+                options={aspectRatioVideoOptions}
                 value={formState.aspectRatio}
                 onChange={handleChange}
             />
-            {/* Jika ingin RadioGroup untuk Aspect Ratio Video:
-            <RadioGroup
-                label="Aspect Ratio Video"
-                name="aspectRatio"
-                options={aspectRatioVideoOptions}
-                selectedValue={formState.aspectRatio}
-                onChange={handleRadioChange}
-                inline={false}
-            />
-            */}
           </div>
         </FormSection>
 
@@ -275,7 +281,6 @@ const VideoPromptForm: React.FC = () => {
             </div>
       </FormSection>
 
-
         <div className="flex flex-col sm:flex-row justify-end space-y-3 sm:space-y-0 sm:space-x-4 pt-6 border-t border-slate-200 dark:border-slate-700">
           <Button type="button" variant="outline" onClick={handleReset} className="w-full sm:w-auto" disabled={isLoading}>
             Reset Semua Parameter
@@ -286,14 +291,14 @@ const VideoPromptForm: React.FC = () => {
         </div>
       </form>
 
-      {/* Placeholder untuk output prompt video, akan dibuat komponennya nanti */}
-      {submissionError && (
-        <div className="mt-8 p-4 bg-red-50 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-lg text-red-700 dark:text-red-300">
-          <h4 className="font-semibold">Error Sementara:</h4>
-          <p>{submissionError}</p>
-        </div>
-      )}
-      {/* {generatedPrompts && <VideoPromptOutput prompts={generatedPrompts} />} */}
+      {/* BARU: Render VideoPromptOutput */}
+      <div ref={outputRef}>
+        <VideoPromptOutput
+          prompts={generatedVideoPrompts}
+          isLoading={isLoading}
+          error={submissionError}
+        />
+      </div>
     </>
   );
 };
