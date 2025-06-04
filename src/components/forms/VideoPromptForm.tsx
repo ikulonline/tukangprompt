@@ -1,7 +1,6 @@
-
 // src/components/forms/VideoPromptForm.tsx
-import React, { useState, ChangeEvent, FormEvent, useRef, useEffect } from 'react';
-import { useLocation } from 'react-router-dom'; // BARU
+import React, { useState, ChangeEvent, FormEvent, useRef, useEffect, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import { VideoPromptFormState, SelectOption, GeneratedVideoPrompts } from '../../types';
 import Input from '../ui/Input';
 import Textarea from '../ui/Textarea';
@@ -10,7 +9,7 @@ import Button from '../ui/Button';
 import FormSection from '../ui/FormSection';
 import TooltipIcon from '../ui/TooltipIcon';
 import VideoPromptOutput from '../VideoPromptOutput';
-import { useAuth } from '../../hooks/useAuth'; // BARU
+import { useAuth } from '../../hooks/useAuth';
 
 const initialVideoFormStateValues: VideoPromptFormState = {
   sceneDescription: '', estimatedDuration: '5-10s', mainCameraMovement: 'Statis',
@@ -62,32 +61,39 @@ const aspectRatioVideoOptions: SelectOption[] = [
   { value: '2.39:1', label: '2.39:1 (Cinemascope)'},
 ];
 
-interface VideoPromptFormProps { // BARU
+interface VideoPromptFormProps {
   initialData?: VideoPromptFormState;
+  onPromptSaveSuccess?: () => void; // Callback untuk refresh daftar
 }
 
-const VideoPromptForm: React.FC<VideoPromptFormProps> = ({ initialData }) => { // BARU
-  const { user, session } = useAuth(); // BARU
-  const location = useLocation(); // BARU
+const VideoPromptForm: React.FC<VideoPromptFormProps> = ({ initialData, onPromptSaveSuccess }) => {
+  const { user, session } = useAuth();
+  const location = useLocation();
 
-  const [formState, setFormState] = useState<VideoPromptFormState>(initialData || initialVideoFormStateValues);
+  const [formState, setFormState] = useState<VideoPromptFormState>(initialVideoFormStateValues);
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [isSavingConfig, setIsSavingConfig] = useState<boolean>(false); // BARU
+  const [isSavingConfig, setIsSavingConfig] = useState<boolean>(false);
   const [generatedVideoPrompts, setGeneratedVideoPrompts] = useState<GeneratedVideoPrompts | null>(null);
   const [submissionError, setSubmissionError] = useState<string | null>(null);
-  const [configSaveError, setConfigSaveError] = useState<string | null>(null); // BARU
-  const [configSaveSuccess, setConfigSaveSuccess] = useState<boolean>(false); // BARU
+  const [configSaveError, setConfigSaveError] = useState<string | null>(null);
+  const [configSaveSuccess, setConfigSaveSuccess] = useState<boolean>(false);
   const outputRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => { // BARU: Handle initialData from location state
-    const state = location.state as { loadedConfig?: { type: string; parameters: any } } | null;
-    if (state?.loadedConfig && state.loadedConfig.type === 'video') {
-      setFormState(state.loadedConfig.parameters as VideoPromptFormState);
+  const initializeForm = useCallback((data?: VideoPromptFormState) => {
+    setFormState(data || initialVideoFormStateValues);
+  }, []);
+
+  useEffect(() => {
+    const stateFromLocation = location.state as { loadedConfig?: { type: string; parameters: any } } | null;
+    if (stateFromLocation?.loadedConfig && stateFromLocation.loadedConfig.type === 'video') {
+      initializeForm(stateFromLocation.loadedConfig.parameters as VideoPromptFormState);
       window.history.replaceState({}, document.title);
     } else if (initialData) {
-        setFormState(initialData);
+      initializeForm(initialData);
+    } else {
+      initializeForm();
     }
-  }, [location.state, initialData]);
+  }, [location.state, initialData, initializeForm]);
 
   useEffect(() => {
     if (generatedVideoPrompts && !isLoading && !submissionError && outputRef.current) {
@@ -105,8 +111,8 @@ const VideoPromptForm: React.FC<VideoPromptFormProps> = ({ initialData }) => { /
     setGeneratedVideoPrompts(null);
     setSubmissionError(null);
     setIsLoading(false);
-    setConfigSaveError(null); // BARU
-    setConfigSaveSuccess(false); // BARU
+    setConfigSaveError(null);
+    setConfigSaveSuccess(false);
   };
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
@@ -128,7 +134,6 @@ const VideoPromptForm: React.FC<VideoPromptFormProps> = ({ initialData }) => { /
     }
   };
 
-  // BARU: Fungsi untuk menyimpan konfigurasi video
   const handleSaveConfiguration = async () => {
     if (!user || !session?.access_token) {
       setConfigSaveError("Anda harus login untuk menyimpan konfigurasi.");
@@ -171,15 +176,14 @@ const VideoPromptForm: React.FC<VideoPromptFormProps> = ({ initialData }) => { /
   return (
     <>
       <form onSubmit={handleSubmit} className="space-y-8">
-        {/* Form sections remain the same */}
         <FormSection title="Konsep & Deskripsi Video Utama">
-          <Textarea label="Deskripsi Adegan Utama / Konsep Video" name="sceneDescription" placeholder="Contoh: Robot kecil menemukan bunga..." value={formState.sceneDescription} onChange={handleChange} rows={5} required/>
+          <Textarea label="Deskripsi Adegan Utama / Konsep Video" name="sceneDescription" placeholder="Contoh: Robot kecil menemukan bunga di tengah reruntuhan kota masa depan..." value={formState.sceneDescription} onChange={handleChange} rows={5} required/>
         </FormSection>
 
         <FormSection title="Detail Subjek & Setting (Opsional untuk Video)">
           <Select label="Tipe Subjek Utama (Jika Ada)" name="subjectType" options={subjectTypeOptions} value={formState.subjectType} onChange={handleChange}/>
-          <Textarea label="Deskripsi Subjek Utama (Jika Ada)" name="subjectDescription" placeholder="Contoh: Robot dengan mata biru..." value={formState.subjectDescription} onChange={handleChange} rows={3} containerClassName="mt-4"/>
-          <Input label="Lokasi Setting Utama" name="settingLocation" placeholder="Contoh: Reruntuhan kota..." value={formState.settingLocation} onChange={handleChange} containerClassName="mt-4"/>
+          <Textarea label="Deskripsi Subjek Utama (Jika Ada)" name="subjectDescription" placeholder="Contoh: Robot dengan mata biru bercahaya, tubuh terbuat dari logam usang..." value={formState.subjectDescription} onChange={handleChange} rows={3} containerClassName="mt-4"/>
+          <Input label="Lokasi Setting Utama" name="settingLocation" placeholder="Contoh: Reruntuhan kota yang ditumbuhi tanaman liar..." value={formState.settingLocation} onChange={handleChange} containerClassName="mt-4"/>
         </FormSection>
 
         <FormSection title="Parameter Sinematik & Durasi">
@@ -202,12 +206,12 @@ const VideoPromptForm: React.FC<VideoPromptFormProps> = ({ initialData }) => { /
         </FormSection>
 
         <FormSection title="Prompt Negatif Video (Opsional)" isCollapsible={true} initiallyOpen={false}>
-          <Textarea label="Hal yang Dihindari dalam Video" name="negativePrompt" placeholder="Contoh: Goyangan kamera..." value={formState.negativePrompt} onChange={handleChange} rows={3}/>
-          <div className="flex items-center mt-1"><TooltipIcon text="Sebutkan yang TIDAK diinginkan." /></div>
+          <Textarea label="Hal yang Dihindari dalam Video" name="negativePrompt" placeholder="Contoh: Goyangan kamera berlebihan, kualitas rendah, teks atau watermark..." value={formState.negativePrompt} onChange={handleChange} rows={3}/>
+          <div className="flex items-center mt-1"><TooltipIcon text="Sebutkan elemen atau kualitas yang TIDAK Anda inginkan muncul dalam video." /></div>
         </FormSection>
 
         <div className="flex flex-col sm:flex-row justify-end items-center space-y-3 sm:space-y-0 sm:space-x-4 pt-6 border-t border-slate-200 dark:border-slate-700">
-          {user && ( // BARU: Tombol Simpan Konfigurasi
+          {user && (
             <Button type="button" variant="outline" onClick={handleSaveConfiguration} className="w-full sm:w-auto" isLoading={isSavingConfig} disabled={isLoading}>
               {isSavingConfig ? 'Menyimpan...' : configSaveSuccess ? 'Konfig Tersimpan!' : 'Simpan Konfigurasi'}
             </Button>
@@ -223,8 +227,13 @@ const VideoPromptForm: React.FC<VideoPromptFormProps> = ({ initialData }) => { /
       </form>
 
       <div ref={outputRef}>
-        {/* BARU: Kirim formState yang digunakan ke VideoPromptOutput */}
-        <VideoPromptOutput prompts={generatedVideoPrompts} formInputUsed={generatedVideoPrompts ? formState : null} isLoading={isLoading} error={submissionError} />
+        <VideoPromptOutput 
+          prompts={generatedVideoPrompts} 
+          formInputUsed={generatedVideoPrompts ? formState : null} 
+          isLoading={isLoading} 
+          error={submissionError}
+          onSaveSuccess={onPromptSaveSuccess} // Teruskan callback
+        />
       </div>
     </>
   );

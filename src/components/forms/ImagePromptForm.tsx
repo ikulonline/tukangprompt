@@ -1,7 +1,6 @@
-
 // src/components/forms/ImagePromptForm.tsx
-import React, { useState, ChangeEvent, FormEvent, useRef, useEffect } from 'react';
-import { useLocation } from 'react-router-dom'; // BARU
+import React, { useState, ChangeEvent, FormEvent, useRef, useEffect, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import { SelectOption, RadioOption, ImagePromptFormState, GeneratedPrompts } from '../../types';
 import Input from '../ui/Input';
 import Textarea from '../ui/Textarea';
@@ -11,7 +10,7 @@ import Button from '../ui/Button';
 import TooltipIcon from '../ui/TooltipIcon';
 import FormSection from '../ui/FormSection';
 import ImagePromptOutput from '../ImagePromptOutput';
-import { useAuth } from '../../hooks/useAuth'; // BARU
+import { useAuth } from '../../hooks/useAuth';
 
 const initialFormStateValues: ImagePromptFormState = {
   subjectType: '', subjectDescription: '', subjectCount: 'Satu', subjectAppearanceDetails: '',
@@ -95,33 +94,41 @@ const aspectRatioOptions: RadioOption[] = [
   { value: '9:16', label: '9:16 (Portrait)' }, { value: '4:3', label: '4:3 (Klasik)' }, { value: '3:2', label: '3:2 (Foto)' },
 ];
 
-interface ImagePromptFormProps { // BARU
+interface ImagePromptFormProps {
   initialData?: ImagePromptFormState;
+  onPromptSaveSuccess?: () => void; // Callback untuk refresh daftar
 }
 
-const ImagePromptForm: React.FC<ImagePromptFormProps> = ({ initialData }) => { // BARU
-  const { user, session } = useAuth(); // BARU
-  const location = useLocation(); // BARU
+const ImagePromptForm: React.FC<ImagePromptFormProps> = ({ initialData, onPromptSaveSuccess }) => {
+  const { user, session } = useAuth();
+  const location = useLocation();
 
-  const [formState, setFormState] = useState<ImagePromptFormState>(initialData || initialFormStateValues);
+  const [formState, setFormState] = useState<ImagePromptFormState>(initialFormStateValues); // Initial state
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [isSavingConfig, setIsSavingConfig] = useState<boolean>(false); // BARU
+  const [isSavingConfig, setIsSavingConfig] = useState<boolean>(false);
   const [generatedPrompts, setGeneratedPrompts] = useState<GeneratedPrompts | null>(null);
   const [submissionError, setSubmissionError] = useState<string | null>(null);
-  const [configSaveError, setConfigSaveError] = useState<string | null>(null); // BARU
-  const [configSaveSuccess, setConfigSaveSuccess] = useState<boolean>(false); // BARU
+  const [configSaveError, setConfigSaveError] = useState<string | null>(null);
+  const [configSaveSuccess, setConfigSaveSuccess] = useState<boolean>(false);
   const outputRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => { // BARU: Handle initialData from location state (for loading config)
-    const state = location.state as { loadedConfig?: { type: string; parameters: any } } | null;
-    if (state?.loadedConfig && state.loadedConfig.type === 'image') {
-      setFormState(state.loadedConfig.parameters as ImagePromptFormState);
-      // Clear the state to prevent re-loading on refresh or re-navigation
+  // Gunakan useCallback agar fungsi setFormState tidak berubah referensinya kecuali initialData berubah
+  const initializeForm = useCallback((data?: ImagePromptFormState) => {
+    setFormState(data || initialFormStateValues);
+  }, []);
+
+
+  useEffect(() => {
+    const stateFromLocation = location.state as { loadedConfig?: { type: string; parameters: any } } | null;
+    if (stateFromLocation?.loadedConfig && stateFromLocation.loadedConfig.type === 'image') {
+      initializeForm(stateFromLocation.loadedConfig.parameters as ImagePromptFormState);
       window.history.replaceState({}, document.title) 
-    } else if (initialData) { // Handle prop-based initialData
-        setFormState(initialData);
+    } else if (initialData) {
+      initializeForm(initialData);
+    } else {
+      initializeForm(); // Reset ke initialFormStateValues jika tidak ada data
     }
-  }, [location.state, initialData]);
+  }, [location.state, initialData, initializeForm]);
 
 
   useEffect(() => {
@@ -145,8 +152,8 @@ const ImagePromptForm: React.FC<ImagePromptFormProps> = ({ initialData }) => { /
     setGeneratedPrompts(null);
     setSubmissionError(null);
     setIsLoading(false);
-    setConfigSaveError(null); // BARU
-    setConfigSaveSuccess(false); // BARU
+    setConfigSaveError(null); 
+    setConfigSaveSuccess(false);
   };
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
@@ -168,7 +175,6 @@ const ImagePromptForm: React.FC<ImagePromptFormProps> = ({ initialData }) => { /
     }
   };
 
-  // BARU: Fungsi untuk menyimpan konfigurasi
   const handleSaveConfiguration = async () => {
     if (!user || !session?.access_token) {
       setConfigSaveError("Anda harus login untuk menyimpan konfigurasi.");
@@ -176,7 +182,7 @@ const ImagePromptForm: React.FC<ImagePromptFormProps> = ({ initialData }) => { /
     }
     const configName = window.prompt("Masukkan nama untuk konfigurasi ini:");
     if (!configName || configName.trim() === "") {
-      return; // User cancelled or entered empty name
+      return;
     }
 
     setIsSavingConfig(true);
@@ -212,7 +218,6 @@ const ImagePromptForm: React.FC<ImagePromptFormProps> = ({ initialData }) => { /
   return (
     <>
       <form onSubmit={handleSubmit} className="space-y-8">
-        {/* Form sections remain the same, only changed value prop for aspect ratio radio */}
         <FormSection title="Subjek Utama">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Select label="Tipe Subjek" name="subjectType" options={subjectTypeOptions} value={formState.subjectType} onChange={handleChange} containerClassName="flex-grow"/>
@@ -283,7 +288,7 @@ const ImagePromptForm: React.FC<ImagePromptFormProps> = ({ initialData }) => { /
         </FormSection>
 
         <div className="flex flex-col sm:flex-row justify-end items-center space-y-3 sm:space-y-0 sm:space-x-4 pt-6 border-t border-slate-200 dark:border-slate-700">
-          {user && ( // BARU: Tombol Simpan Konfigurasi
+          {user && (
             <Button type="button" variant="outline" onClick={handleSaveConfiguration} className="w-full sm:w-auto" isLoading={isSavingConfig} disabled={isLoading}>
               {isSavingConfig ? 'Menyimpan...' : configSaveSuccess ? 'Konfig Tersimpan!' : 'Simpan Konfigurasi'}
             </Button>
@@ -299,7 +304,13 @@ const ImagePromptForm: React.FC<ImagePromptFormProps> = ({ initialData }) => { /
       </form>
 
       <div ref={outputRef}>
-        <ImagePromptOutput prompts={generatedPrompts} formInputUsed={generatedPrompts ? formState : null} isLoading={isLoading} error={submissionError} />
+        <ImagePromptOutput 
+          prompts={generatedPrompts} 
+          formInputUsed={generatedPrompts ? formState : null} 
+          isLoading={isLoading} 
+          error={submissionError}
+          onSaveSuccess={onPromptSaveSuccess} // Teruskan callback
+        />
       </div>
     </>
   );

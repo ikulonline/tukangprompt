@@ -1,84 +1,76 @@
-
 // src/pages/DashboardPage.tsx
-import React, { useEffect, useState } from 'react';
-import { useLocation } from 'react-router-dom'; // BARU
+import React, { useEffect, useState, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import ImagePromptForm from '../components/forms/ImagePromptForm';
 import VideoPromptForm from '../components/forms/VideoPromptForm';
 import FormSection from '../components/ui/FormSection';
 import { supabase } from '../lib/supabaseClient';
-import { SavedPrompt, SavedVideoPrompt, ImagePromptFormState, VideoPromptFormState } from '../types'; // BARU: SavedVideoPrompt & form states
+import { SavedPrompt, SavedVideoPrompt, ImagePromptFormState, VideoPromptFormState } from '../types';
 import Button from '../components/ui/Button';
 
 type ActiveFormType = 'image' | 'video';
 
 const DashboardPage: React.FC = () => {
   const { user, profile, profileLoading } = useAuth();
-  const location = useLocation(); // BARU
+  const location = useLocation();
 
-  // State untuk form aktif dan data yang akan dimuat
   const [activeFormType, setActiveFormType] = useState<ActiveFormType>('image');
   const [loadedImageConfig, setLoadedImageConfig] = useState<ImagePromptFormState | undefined>(undefined);
   const [loadedVideoConfig, setLoadedVideoConfig] = useState<VideoPromptFormState | undefined>(undefined);
   
-  // State untuk saved image prompts
   const [savedImagePrompts, setSavedImagePrompts] = useState<SavedPrompt[]>([]);
   const [savedImagePromptsLoading, setSavedImagePromptsLoading] = useState<boolean>(true);
   const [savedImagePromptsError, setSavedImagePromptsError] = useState<string | null>(null);
 
-  // BARU: State untuk saved video prompts
   const [savedVideoPrompts, setSavedVideoPrompts] = useState<SavedVideoPrompt[]>([]);
   const [savedVideoPromptsLoading, setSavedVideoPromptsLoading] = useState<boolean>(true);
   const [savedVideoPromptsError, setSavedVideoPromptsError] = useState<string | null>(null);
 
+  const fetchSavedImagePrompts = useCallback(async () => {
+    if (!user) { setSavedImagePromptsLoading(false); return; }
+    setSavedImagePromptsLoading(true); setSavedImagePromptsError(null);
+    try {
+      const { data, error } = await supabase.from('saved_prompts').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
+      if (error) throw error;
+      setSavedImagePrompts(data || []);
+    } catch (e: any) { setSavedImagePromptsError(e.message || "Gagal memuat prompt gambar tersimpan."); } 
+    finally { setSavedImagePromptsLoading(false); }
+  }, [user]);
 
-  useEffect(() => { // BARU: Tangani pemuatan konfigurasi dari MyConfigsPage
+  const fetchSavedVideoPrompts = useCallback(async () => {
+    if (!user) { setSavedVideoPromptsLoading(false); return; }
+    setSavedVideoPromptsLoading(true); setSavedVideoPromptsError(null);
+    try {
+      const { data, error } = await supabase.from('saved_video_prompts').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
+      if (error) throw error;
+      setSavedVideoPrompts(data || []);
+    } catch (e: any) { setSavedVideoPromptsError(e.message || "Gagal memuat prompt video tersimpan."); }
+    finally { setSavedVideoPromptsLoading(false); }
+  }, [user]);
+
+  useEffect(() => {
+    fetchSavedImagePrompts();
+    fetchSavedVideoPrompts();
+  }, [user, fetchSavedImagePrompts, fetchSavedVideoPrompts]);
+
+
+  useEffect(() => { 
     const state = location.state as { loadedConfig?: { type: string; parameters: any } } | null;
     if (state?.loadedConfig) {
       if (state.loadedConfig.type === 'image') {
         setActiveFormType('image');
         setLoadedImageConfig(state.loadedConfig.parameters as ImagePromptFormState);
-        setLoadedVideoConfig(undefined); // Pastikan form lain di-reset
+        setLoadedVideoConfig(undefined); 
       } else if (state.loadedConfig.type === 'video') {
         setActiveFormType('video');
         setLoadedVideoConfig(state.loadedConfig.parameters as VideoPromptFormState);
-        setLoadedImageConfig(undefined); // Pastikan form lain di-reset
+        setLoadedImageConfig(undefined);
       }
-      // Hapus state dari location agar tidak memuat ulang jika halaman di-refresh
       window.history.replaceState({}, document.title);
     }
   }, [location.state]);
-
-
-  useEffect(() => {
-    const fetchSavedImagePrompts = async () => {
-      if (!user) { setSavedImagePromptsLoading(false); return; }
-      setSavedImagePromptsLoading(true); setSavedImagePromptsError(null);
-      try {
-        const { data, error } = await supabase.from('saved_prompts').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
-        if (error) throw error;
-        setSavedImagePrompts(data || []);
-      } catch (e: any) { setSavedImagePromptsError(e.message || "Gagal memuat prompt gambar tersimpan."); } 
-      finally { setSavedImagePromptsLoading(false); }
-    };
-    fetchSavedImagePrompts();
-  }, [user]);
-
-  // BARU: Fetch saved video prompts
-  useEffect(() => {
-    const fetchSavedVideoPrompts = async () => {
-      if (!user) { setSavedVideoPromptsLoading(false); return; }
-      setSavedVideoPromptsLoading(true); setSavedVideoPromptsError(null);
-      try {
-        const { data, error } = await supabase.from('saved_video_prompts').select('*').eq('user_id', user.id).order('created_at', { ascending: false });
-        if (error) throw error;
-        setSavedVideoPrompts(data || []);
-      } catch (e: any) { setSavedVideoPromptsError(e.message || "Gagal memuat prompt video tersimpan."); }
-      finally { setSavedVideoPromptsLoading(false); }
-    };
-    fetchSavedVideoPrompts();
-  }, [user]);
 
 
   if (profileLoading) {
@@ -95,10 +87,26 @@ const DashboardPage: React.FC = () => {
 
       <div className="my-8">
         <div className="flex space-x-2 sm:space-x-4 border-b border-slate-200 dark:border-slate-700 mb-6 pb-3">
-          <Button variant={activeFormType === 'image' ? 'primary' : 'ghost'} onClick={() => { setActiveFormType('image'); setLoadedImageConfig(undefined); setLoadedVideoConfig(undefined);}} className={`px-3 py-2 sm:px-4 rounded-t-md ${activeFormType === 'image' ? 'text-sky-600 dark:text-sky-400 border-b-2 border-sky-500' : 'text-slate-500 dark:text-slate-400'}`}>
+          <Button 
+            variant={activeFormType === 'image' ? 'primary' : 'ghost'} 
+            onClick={() => { 
+              setActiveFormType('image'); 
+              setLoadedImageConfig(undefined); // Reset agar tidak menggunakan config lama jika user beralih tab
+              setLoadedVideoConfig(undefined); 
+            }} 
+            className={`px-3 py-2 sm:px-4 rounded-t-md ${activeFormType === 'image' ? 'text-sky-600 dark:text-sky-400 border-b-2 border-sky-500' : 'text-slate-500 dark:text-slate-400'}`}
+          >
             Prompt Gambar
           </Button>
-          <Button variant={activeFormType === 'video' ? 'primary' : 'ghost'} onClick={() => { setActiveFormType('video'); setLoadedImageConfig(undefined); setLoadedVideoConfig(undefined);}} className={`px-3 py-2 sm:px-4 rounded-t-md ${activeFormType === 'video' ? 'text-sky-600 dark:text-sky-400 border-b-2 border-sky-500' : 'text-slate-500 dark:text-slate-400'}`}>
+          <Button 
+            variant={activeFormType === 'video' ? 'primary' : 'ghost'} 
+            onClick={() => { 
+              setActiveFormType('video'); 
+              setLoadedImageConfig(undefined); 
+              setLoadedVideoConfig(undefined); // Reset agar tidak menggunakan config lama jika user beralih tab
+            }} 
+            className={`px-3 py-2 sm:px-4 rounded-t-md ${activeFormType === 'video' ? 'text-sky-600 dark:text-sky-400 border-b-2 border-sky-500' : 'text-slate-500 dark:text-slate-400'}`}
+          >
             Prompt Video
           </Button>
         </div>
@@ -106,13 +114,21 @@ const DashboardPage: React.FC = () => {
         {activeFormType === 'image' && (
           <div>
             <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-100 mb-6">Parameter Prompt Gambar</h2>
-            <ImagePromptForm key={loadedImageConfig ? 'loaded-image' : 'new-image'} initialData={loadedImageConfig} /> {/* BARU: key & initialData */}
+            <ImagePromptForm 
+                key={loadedImageConfig ? JSON.stringify(loadedImageConfig) : 'new-image-form'} 
+                initialData={loadedImageConfig} 
+                onPromptSaveSuccess={fetchSavedImagePrompts}
+            />
           </div>
         )}
         {activeFormType === 'video' && (
           <div>
             <h2 className="text-2xl font-semibold text-slate-800 dark:text-slate-100 mb-6">Parameter Prompt Video</h2>
-            <VideoPromptForm key={loadedVideoConfig ? 'loaded-video' : 'new-video'} initialData={loadedVideoConfig} /> {/* BARU: key & initialData */}
+            <VideoPromptForm 
+                key={loadedVideoConfig ? JSON.stringify(loadedVideoConfig) : 'new-video-form'} 
+                initialData={loadedVideoConfig} 
+                onPromptSaveSuccess={fetchSavedVideoPrompts}
+            />
           </div>
         )}
       </div>
@@ -136,7 +152,6 @@ const DashboardPage: React.FC = () => {
         )}
       </FormSection>
 
-      {/* BARU: Bagian untuk Prompt Video Tersimpan */}
       <FormSection title="Prompt Video Tersimpan Anda">
         {savedVideoPromptsLoading ? <div className="flex justify-center py-4"><LoadingSpinner size="md" /></div>
         : savedVideoPromptsError ? <p className="text-red-500 dark:text-red-400">{savedVideoPromptsError}</p>

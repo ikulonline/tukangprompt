@@ -4,11 +4,10 @@ import Textarea from './ui/Textarea';
 import Button from './ui/Button';
 import Tabs from './ui/Tabs';
 import LoadingSpinner from './ui/LoadingSpinner';
-import { supabase } from '../lib/supabaseClient'; // Impor supabase client
-import { useAuth } from '../hooks/useAuth'; // Impor useAuth untuk mendapatkan user ID
-import { ImagePromptFormState, GeneratedPrompts } from '../types'; // Impor tipe
+import { supabase } from '../lib/supabaseClient';
+import { useAuth } from '../hooks/useAuth';
+import { ImagePromptFormState, GeneratedPrompts } from '../types';
 
-// BARU: Icon untuk tombol simpan
 const SaveIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-4 h-4 mr-2"}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
@@ -17,9 +16,10 @@ const SaveIcon: React.FC<{ className?: string }> = ({ className }) => (
 
 interface ImagePromptOutputProps {
   prompts: GeneratedPrompts | null;
-  formInputUsed: ImagePromptFormState | null; // BARU: State form yang digunakan
+  formInputUsed: ImagePromptFormState | null;
   isLoading: boolean;
   error: string | null;
+  onSaveSuccess?: () => void; // Callback
 }
 
 const ClipboardIcon: React.FC<{ className?: string }> = ({ className }) => (
@@ -75,11 +75,11 @@ const PromptDisplay: React.FC<{ promptText: string; modelName: string }> = ({ pr
   );
 };
 
-const ImagePromptOutput: React.FC<ImagePromptOutputProps> = ({ prompts, formInputUsed, isLoading, error }) => {
-  const { user } = useAuth(); // Dapatkan user untuk user_id
+const ImagePromptOutput: React.FC<ImagePromptOutputProps> = ({ prompts, formInputUsed, isLoading, error, onSaveSuccess }) => {
+  const { user } = useAuth();
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
+  const [saveSuccessMessage, setSaveSuccessMessage] = useState<boolean>(false);
 
   const handleSavePrompt = async () => {
     if (!prompts || !formInputUsed || !user) {
@@ -89,7 +89,7 @@ const ImagePromptOutput: React.FC<ImagePromptOutputProps> = ({ prompts, formInpu
 
     setIsSaving(true);
     setSaveError(null);
-    setSaveSuccess(false);
+    setSaveSuccessMessage(false);
 
     try {
       const { error: insertError } = await supabase
@@ -100,18 +100,16 @@ const ImagePromptOutput: React.FC<ImagePromptOutputProps> = ({ prompts, formInpu
             form_input: formInputUsed,
             dall_e_prompt: prompts.dall_e_prompt,
             midjourney_prompt: prompts.midjourney_prompt,
-            // prompt_title bisa ditambahkan nanti jika ada input untuk judul
           },
         ]);
 
       if (insertError) {
         throw insertError;
       }
-      setSaveSuccess(true);
+      setSaveSuccessMessage(true);
+      onSaveSuccess?.(); // Panggil callback jika ada
       setTimeout(() => {
-        setSaveSuccess(false);
-        // Optionally, trigger a refresh of the saved prompts list on DashboardPage
-        // This might require a callback prop or a global state solution.
+        setSaveSuccessMessage(false);
       }, 3000); 
     } catch (e: any) {
       console.error("Error saving prompt:", e);
@@ -172,7 +170,7 @@ const ImagePromptOutput: React.FC<ImagePromptOutputProps> = ({ prompts, formInpu
             className="w-full sm:w-auto"
             aria-label="Simpan hasil prompt ini"
           >
-            <SaveIcon /> {isSaving ? 'Menyimpan...' : saveSuccess ? 'Tersimpan!' : 'Simpan Prompt Ini'}
+            <SaveIcon /> {isSaving ? 'Menyimpan...' : saveSuccessMessage ? 'Tersimpan!' : 'Simpan Prompt Ini'}
           </Button>
         )}
       </div>
