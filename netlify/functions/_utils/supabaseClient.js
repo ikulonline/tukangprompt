@@ -29,7 +29,7 @@ const getUserFromToken = async (accessToken) => {
   let userResult = null;
   let errorResult = null;
 
-  try { // Outer try block
+  try { // Outer try block for setup or other logic
     if (!process.env.SUPABASE_URL || !process.env.SUPABASE_ANON_KEY) {
       console.error('AuthUtil: SUPABASE_URL or SUPABASE_ANON_KEY missing for direct client creation in getUserFromToken.');
       throw new Error('Server configuration error: Supabase credentials missing for auth check.');
@@ -38,56 +38,82 @@ const getUserFromToken = async (accessToken) => {
     console.log('AuthUtil: supabaseAuthClient created for getUser.');
     console.log('AuthUtil: Token type:', typeof accessToken, 'Token length:', accessToken.length, 'Token (first 10 chars):', accessToken.substring(0,10));
     
-    let authDataFromGetUser, authErrorFromGetUser;
+    let rawAuthData = null;
+    let rawAuthError = null;
 
-    try { // Inner, specific try-catch for the critical await call
-        console.log('AuthUtil: >>> TRYING (inner try): await supabaseAuthClient.auth.getUser(accessToken)');
-        const resultFromGetUser = await supabaseAuthClient.auth.getUser(accessToken);
-        authDataFromGetUser = resultFromGetUser.data;
-        authErrorFromGetUser = resultFromGetUser.error;
-        console.log('AuthUtil: <<< SUCCESS (inner try): await supabaseAuthClient.auth.getUser(accessToken) completed.');
-    } catch (specificAuthError) {
-        console.error('AuthUtil: XXX CATCH (inner try): Error DIRECTLY from await supabaseAuthClient.auth.getUser(accessToken):', 
-                      specificAuthError.message, 
-                      specificAuthError.stack, 
-                      JSON.stringify(specificAuthError));
-        errorResult = { message: 'Failed during auth.getUser call: ' + specificAuthError.message, caughtErrorName: specificAuthError.name, caughtErrorStack: specificAuthError.stack };
-        userResult = null; 
-    }
-
-    // Process results if the inner try did not already set a critical errorResult
-    if (!errorResult) { 
-        userResult = authDataFromGetUser?.user || null;
-        // If specificAuthError was caught, authErrorFromGetUser might be undefined.
-        // If getUser completed but returned an error, authErrorFromGetUser will have it.
-        errorResult = authErrorFromGetUser || null; 
+    console.log('AuthUtil: >>> Entering critical section: await supabaseAuthClient.auth.getUser(accessToken)');
+    try {
+        const { data, error } = await supabaseAuthClient.auth.getUser(accessToken);
+        // This log is critical: if it appears, the await completed.
+        console.log('AuthUtil: <<< Critical section completed: await supabaseAuthClient.auth.getUser(accessToken)'); 
         
-        console.log('AuthUtil: supabaseAuthClient.auth.getUser results processed (after inner try).', 
-                    'User object found:', !!userResult, 
-                    'Error object from getUser:', errorResult ? JSON.stringify(errorResult) : 'null/undefined');
-    } else {
-        console.log('AuthUtil: Skipping further processing of getUser results due to error caught in inner try.');
+        rawAuthData = data;
+        rawAuthError = error;
+
+        console.log('AuthUtil: Raw data from supabase.auth.getUser:', JSON.stringify(rawAuthData, null, 2));
+        console.log('AuthUtil: Raw error from supabase.auth.getUser:', rawAuthError ? JSON.stringify(rawAuthError, Object.getOwnPropertyNames(rawAuthError)) : 'null');
+
+        if (rawAuthError) {
+            console.warn('AuthUtil: Error object returned by supabase.auth.getUser processing.');
+            errorResult = { 
+                message: 'Error from supabase.auth.getUser: ' + (rawAuthError.message || 'Unknown auth error'), 
+                details: rawAuthError 
+            };
+        }
+        
+        userResult = rawAuthData?.user || null;
+
+        if (userResult) {
+            console.log('AuthUtil: User successfully retrieved from token:', userResult.id);
+        } else if (!rawAuthError) {
+            // No user and no explicit error from Supabase means the token might be invalid/expired.
+            console.warn('AuthUtil: No user data found for token, and no explicit error from Supabase. Token may be invalid or expired.');
+            errorResult = { message: 'No user data found for token (potentially invalid/expired).' };
+        }
+
+    } catch (e) {
+        // This catch block is for exceptions THROWN by the await call itself,
+        // if it's not a Supabase-structured error (e.g. promise rejects with non-standard error).
+        console.error('AuthUtil: XXX Exception DIRECTLY from await supabaseAuthClient.auth.getUser(accessToken):');
+        console.error('AuthUtil: Error Type:', typeof e);
+        console.error('AuthUtil: Is instanceof Error:', e instanceof Error);
+        console.error('AuthUtil: Error Message:', e?.message);
+        console.error('AuthUtil: Error Stack:', e?.stack);
+        // Attempt to stringify the error, including non-enumerable properties.
+        try {
+            console.error('AuthUtil: Error (Full JSON with own props):', JSON.stringify(e, Object.getOwnPropertyNames(e)));
+        } catch (stringifyError) {
+            console.error('AuthUtil: Could not stringify the caught error object:', stringifyError.message);
+            console.error('AuthUtil: Error (toString()):', String(e));
+        }
+        
+        errorResult = { 
+            message: 'Exception during auth.getUser: ' + (e?.message || 'Undescribed exception'), 
+            errorName: e?.name, 
+            rawErrorString: String(e) // Fallback to string conversion
+        };
+        userResult = null;
     }
 
-  } catch (e) { // Outer catch for other unexpected errors in the setup or broader logic
-    console.error('AuthUtil: Exception in OUTER try block of getUserFromToken:', e.message, e.stack);
-    errorResult = { message: 'Outer exception in getUserFromToken: ' + e.message, caughtErrorName: e.name, caughtErrorStack: e.stack };
+  } catch (outerException) { 
+    // This catch is for errors during setup (e.g., client creation) or other logic outside the critical await block.
+    console.error('AuthUtil: Exception in OUTER try block of getUserFromToken:', outerException?.message, outerException?.stack);
+    errorResult = { 
+        message: 'Outer exception in getUserFromToken: ' + (outerException?.message || 'Undescribed outer exception'), 
+        errorName: outerException?.name 
+    };
     userResult = null;
   }
   
-  // Final logging and return
-  if (errorResult) {
-    console.warn('AuthUtil: Final check - An errorResult is being returned:', JSON.stringify(errorResult));
-  }
-  if (!userResult && !errorResult) {
-    // This case might occur if getUser completes successfully (no exception, no error object returned from Supabase) but data.user is null.
-    // This could indicate an invalid/expired token that Supabase handles by returning { data: { user: null }, error: null }.
-    console.warn('AuthUtil: Final check - No user and no explicit error object. Token might be invalid/expired without throwing.');
-    // It might be better to construct an errorResult here if no user is found.
-    errorResult = { message: 'No user data found for token, and no explicit error from Supabase. Token may be invalid or expired.' };
-  }
-
   console.log('AuthUtil: getUserFromToken returning. User found:', !!userResult, "Error present:", !!errorResult);
+  if(errorResult) {
+    try {
+        console.log('AuthUtil: Final errorResult being returned:', JSON.stringify(errorResult, Object.getOwnPropertyNames(errorResult)));
+    } catch (finalStringifyError) {
+        console.log('AuthUtil: Could not stringify final errorResult. Message:', errorResult.message);
+    }
+  }
+  
   return { user: userResult, error: errorResult };
 };
 
