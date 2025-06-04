@@ -12,6 +12,20 @@ import Button from '../components/ui/Button';
 
 type ActiveFormType = 'image' | 'video';
 
+// Icons for copy functionality
+const ClipboardIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-4 h-4 mr-1.5"}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75H9a.75.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184" />
+  </svg>
+);
+
+const CheckIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-4 h-4 mr-1.5 text-green-500 dark:text-green-400"}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 12.75 6 6 9-13.5" />
+  </svg>
+);
+
+
 const DashboardPage: React.FC = () => {
   const { user, profile, profileLoading } = useAuth();
   const location = useLocation();
@@ -27,6 +41,21 @@ const DashboardPage: React.FC = () => {
   const [savedVideoPrompts, setSavedVideoPrompts] = useState<SavedVideoPrompt[]>([]);
   const [savedVideoPromptsLoading, setSavedVideoPromptsLoading] = useState<boolean>(true);
   const [savedVideoPromptsError, setSavedVideoPromptsError] = useState<string | null>(null);
+
+  const [copiedInfo, setCopiedInfo] = useState<{ id: string; type: string } | null>(null);
+
+  const handleCopy = async (textToCopy: string | null | undefined, promptId: string, type: string) => {
+    if (!textToCopy) return;
+    try {
+      await navigator.clipboard.writeText(textToCopy);
+      setCopiedInfo({ id: promptId, type });
+      setTimeout(() => setCopiedInfo(null), 2000);
+    } catch (err) {
+      console.error('Gagal menyalin:', err);
+      // Optionally, display an error message to the user
+      alert('Gagal menyalin prompt. Silakan coba lagi.');
+    }
+  };
 
   const fetchSavedImagePrompts = useCallback(async () => {
     if (!user) { setSavedImagePromptsLoading(false); return; }
@@ -91,7 +120,7 @@ const DashboardPage: React.FC = () => {
             variant={activeFormType === 'image' ? 'primary' : 'ghost'} 
             onClick={() => { 
               setActiveFormType('image'); 
-              setLoadedImageConfig(undefined); // Reset agar tidak menggunakan config lama jika user beralih tab
+              setLoadedImageConfig(undefined); 
               setLoadedVideoConfig(undefined); 
             }} 
             className={`px-3 py-2 sm:px-4 rounded-t-md ${activeFormType === 'image' ? 'text-sky-600 dark:text-sky-400 border-b-2 border-sky-500' : 'text-slate-500 dark:text-slate-400'}`}
@@ -103,7 +132,7 @@ const DashboardPage: React.FC = () => {
             onClick={() => { 
               setActiveFormType('video'); 
               setLoadedImageConfig(undefined); 
-              setLoadedVideoConfig(undefined); // Reset agar tidak menggunakan config lama jika user beralih tab
+              setLoadedVideoConfig(undefined); 
             }} 
             className={`px-3 py-2 sm:px-4 rounded-t-md ${activeFormType === 'video' ? 'text-sky-600 dark:text-sky-400 border-b-2 border-sky-500' : 'text-slate-500 dark:text-slate-400'}`}
           >
@@ -146,6 +175,30 @@ const DashboardPage: React.FC = () => {
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                   Disimpan: {new Date(prompt.created_at).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}
                 </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {prompt.dall_e_prompt && (
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => handleCopy(prompt.dall_e_prompt, prompt.id, 'dalle')}
+                      title="Salin prompt DALL-E / Umum"
+                    >
+                      {copiedInfo?.id === prompt.id && copiedInfo?.type === 'dalle' ? <CheckIcon /> : <ClipboardIcon />}
+                      {copiedInfo?.id === prompt.id && copiedInfo?.type === 'dalle' ? 'Tersalin!' : 'Salin DALL-E'}
+                    </Button>
+                  )}
+                  {prompt.midjourney_prompt && (
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => handleCopy(prompt.midjourney_prompt, prompt.id, 'midjourney')}
+                      title="Salin prompt Midjourney"
+                    >
+                      {copiedInfo?.id === prompt.id && copiedInfo?.type === 'midjourney' ? <CheckIcon /> : <ClipboardIcon />}
+                      {copiedInfo?.id === prompt.id && copiedInfo?.type === 'midjourney' ? 'Tersalin!' : 'Salin Midjourney'}
+                    </Button>
+                  )}
+                </div>
               </li>
             ))}
           </ul>
@@ -165,6 +218,30 @@ const DashboardPage: React.FC = () => {
                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                   Disimpan: {new Date(prompt.created_at).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}
                 </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {prompt.kling_ai_veo_prompt && (
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => handleCopy(prompt.kling_ai_veo_prompt, prompt.id, 'kling')}
+                      title="Salin prompt Kling/Veo"
+                    >
+                      {copiedInfo?.id === prompt.id && copiedInfo?.type === 'kling' ? <CheckIcon /> : <ClipboardIcon />}
+                      {copiedInfo?.id === prompt.id && copiedInfo?.type === 'kling' ? 'Tersalin!' : 'Salin Kling/Veo'}
+                    </Button>
+                  )}
+                  {prompt.chatgpt_video_idea_prompt && (
+                     <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => handleCopy(prompt.chatgpt_video_idea_prompt, prompt.id, 'chatgpt_idea')}
+                      title="Salin Ide Video ChatGPT"
+                    >
+                      {copiedInfo?.id === prompt.id && copiedInfo?.type === 'chatgpt_idea' ? <CheckIcon /> : <ClipboardIcon />}
+                      {copiedInfo?.id === prompt.id && copiedInfo?.type === 'chatgpt_idea' ? 'Tersalin!' : 'Salin Ide Video'}
+                    </Button>
+                  )}
+                </div>
               </li>
             ))}
           </ul>
