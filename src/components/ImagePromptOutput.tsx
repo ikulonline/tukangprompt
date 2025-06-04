@@ -4,19 +4,24 @@ import Textarea from './ui/Textarea';
 import Button from './ui/Button';
 import Tabs from './ui/Tabs';
 import LoadingSpinner from './ui/LoadingSpinner';
+import { supabase } from '../lib/supabaseClient'; // Impor supabase client
+import { useAuth } from '../hooks/useAuth'; // Impor useAuth untuk mendapatkan user ID
+import { ImagePromptFormState, GeneratedPrompts } from '../types'; // Impor tipe
 
-interface GeneratedPrompts {
-  dall_e_prompt: string;
-  midjourney_prompt: string;
-}
+// BARU: Icon untuk tombol simpan
+const SaveIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-4 h-4 mr-2"}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+  </svg>
+);
 
 interface ImagePromptOutputProps {
   prompts: GeneratedPrompts | null;
+  formInputUsed: ImagePromptFormState | null; // BARU: State form yang digunakan
   isLoading: boolean;
   error: string | null;
 }
 
-// BARU: Icon components
 const ClipboardIcon: React.FC<{ className?: string }> = ({ className }) => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={className || "w-4 h-4 mr-2"}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M15.666 3.888A2.25 2.25 0 0 0 13.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 0 1-.75.75H9a.75.75 0 0 1-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 0 1-2.25 2.25H6.75A2.25 2.25 0 0 1 4.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 0 1 1.927-.184" />
@@ -70,7 +75,53 @@ const PromptDisplay: React.FC<{ promptText: string; modelName: string }> = ({ pr
   );
 };
 
-const ImagePromptOutput: React.FC<ImagePromptOutputProps> = ({ prompts, isLoading, error }) => {
+const ImagePromptOutput: React.FC<ImagePromptOutputProps> = ({ prompts, formInputUsed, isLoading, error }) => {
+  const { user } = useAuth(); // Dapatkan user untuk user_id
+  const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
+
+  const handleSavePrompt = async () => {
+    if (!prompts || !formInputUsed || !user) {
+      setSaveError("Data prompt tidak lengkap atau pengguna tidak login.");
+      return;
+    }
+
+    setIsSaving(true);
+    setSaveError(null);
+    setSaveSuccess(false);
+
+    try {
+      const { error: insertError } = await supabase
+        .from('saved_prompts')
+        .insert([
+          {
+            user_id: user.id,
+            form_input: formInputUsed,
+            dall_e_prompt: prompts.dall_e_prompt,
+            midjourney_prompt: prompts.midjourney_prompt,
+            // prompt_title bisa ditambahkan nanti jika ada input untuk judul
+          },
+        ]);
+
+      if (insertError) {
+        throw insertError;
+      }
+      setSaveSuccess(true);
+      setTimeout(() => {
+        setSaveSuccess(false);
+        // Optionally, trigger a refresh of the saved prompts list on DashboardPage
+        // This might require a callback prop or a global state solution.
+      }, 3000); 
+    } catch (e: any) {
+      console.error("Error saving prompt:", e);
+      setSaveError(e.message || "Gagal menyimpan prompt. Silakan coba lagi.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+
   if (isLoading) {
     return (
       <div className="mt-8 p-6 bg-white dark:bg-slate-800 shadow-lg ring-1 ring-slate-200 dark:ring-slate-700 rounded-lg flex flex-col items-center justify-center min-h-[200px]">
@@ -90,7 +141,7 @@ const ImagePromptOutput: React.FC<ImagePromptOutputProps> = ({ prompts, isLoadin
   }
 
   if (!prompts) {
-    return null; // Jangan tampilkan apa-apa jika tidak ada prompt dan tidak loading/error
+    return null;
   }
 
   const tabsData = [
@@ -108,9 +159,25 @@ const ImagePromptOutput: React.FC<ImagePromptOutputProps> = ({ prompts, isLoadin
 
   return (
     <div className="mt-8 p-6 bg-white dark:bg-slate-800 shadow-xl ring-1 ring-slate-200 dark:ring-slate-700 rounded-lg">
-      <h3 className="text-xl font-semibold text-sky-600 dark:text-sky-400 mb-5">
-        Hasil Prompt Gambar Anda:
-      </h3>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-5">
+        <h3 className="text-xl font-semibold text-sky-600 dark:text-sky-400 mb-3 sm:mb-0">
+          Hasil Prompt Gambar Anda:
+        </h3>
+        {user && prompts && formInputUsed && (
+          <Button 
+            onClick={handleSavePrompt} 
+            variant="primary" 
+            size="sm" 
+            isLoading={isSaving}
+            className="w-full sm:w-auto"
+            aria-label="Simpan hasil prompt ini"
+          >
+            <SaveIcon /> {isSaving ? 'Menyimpan...' : saveSuccess ? 'Tersimpan!' : 'Simpan Prompt Ini'}
+          </Button>
+        )}
+      </div>
+      {saveError && <p className="text-sm text-red-500 dark:text-red-400 mb-3 text-center sm:text-right">{saveError}</p>}
+      
       <Tabs tabs={tabsData} />
     </div>
   );

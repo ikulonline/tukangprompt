@@ -1,4 +1,3 @@
-
 // src/components/VideoPromptOutput.tsx
 import React, { useState } from 'react';
 import Textarea from './ui/Textarea';
@@ -82,8 +81,12 @@ const VideoPromptOutput: React.FC<VideoPromptOutputProps> = ({ prompts, formInpu
         }]);
       if (insertError) throw insertError;
       setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 3000);
+      setTimeout(() => {
+        setSaveSuccess(false);
+        // Optionally, trigger a refresh of the saved prompts list on DashboardPage
+      }, 3000);
     } catch (e: any) {
+      console.error("Error saving video prompt:", e);
       setSaveError(e.message || "Gagal menyimpan prompt video. Silakan coba lagi.");
     } finally {
       setIsSaving(false);
@@ -121,12 +124,19 @@ const VideoPromptOutput: React.FC<VideoPromptOutputProps> = ({ prompts, formInpu
         </h3>
         {/* BARU: Tombol Simpan Prompt Video */}
         {user && prompts && formInputUsed && (
-          <Button onClick={handleSaveVideoPrompt} variant="primary" size="sm" isLoading={isSaving} className="w-full sm:w-auto">
+          <Button 
+            onClick={handleSaveVideoPrompt} 
+            variant="primary" 
+            size="sm" 
+            isLoading={isSaving} 
+            className="w-full sm:w-auto"
+            aria-label="Simpan hasil prompt video ini"
+          >
             <SaveIcon /> {isSaving ? 'Menyimpan...' : saveSuccess ? 'Tersimpan!' : 'Simpan Prompt Ini'}
           </Button>
         )}
       </div>
-      {saveError && <p className="text-sm text-red-500 dark:text-red-400 mb-3">{saveError}</p>}
+      {saveError && <p className="text-sm text-red-500 dark:text-red-400 mb-3 text-center sm:text-right">{saveError}</p>}
       <Tabs tabs={tabsData} />
     </div>
   );
