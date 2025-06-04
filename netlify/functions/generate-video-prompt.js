@@ -5,16 +5,29 @@ import { getSupabaseClient, getUserFromToken } from './_utils/supabaseClient';
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY }); // API_KEY must be set in Netlify env vars
 
 const logPromptHistoryAsync = async (token, promptType, inputParameters, generatedPromptsData) => {
-  if (!token) return;
-
+  console.log('History: logPromptHistoryAsync called.');
+  if (!token) {
+    console.warn('History: logPromptHistoryAsync - No token provided, aborting history log.');
+    return;
+  }
+  if (!generatedPromptsData || Object.keys(generatedPromptsData).length === 0) {
+    console.warn('History: logPromptHistoryAsync - generatedPromptsData is empty or invalid, aborting history log.');
+    return;
+  }
+  
   try {
     const { user, error: userError } = await getUserFromToken(token);
     if (userError || !user) {
-      console.warn('History: Could not log, invalid user token or user not found.', userError?.message);
+      console.warn('History: Could not log, invalid user token or user not found.', userError ? JSON.stringify(userError) : 'User is null.');
       return;
     }
-    
+    console.log('History: User ID for history:', user.id);
+
     const supabase = getSupabaseClient(token);
+
+    console.log('History: Attempting to insert into prompt_history for user:', user.id, 'Prompt Type:', promptType);
+    // console.log('History: Input params snippet:', JSON.stringify(inputParameters).substring(0,100));
+    // console.log('History: Generated prompts snippet:', JSON.stringify(generatedPromptsData).substring(0,100));
 
     const { error: historyError } = await supabase
       .from('prompt_history')
@@ -26,12 +39,12 @@ const logPromptHistoryAsync = async (token, promptType, inputParameters, generat
       }]);
 
     if (historyError) {
-      console.error('History: Error saving to prompt_history:', historyError.message);
+      console.error('History: Error saving to prompt_history:', JSON.stringify(historyError));
     } else {
-      // console.log('History: Video prompt history saved for user:', user.id);
+      console.log('History: Prompt history saved successfully for user:', user.id, 'Type:', promptType);
     }
   } catch (e) {
-    console.error('History: Unexpected error in logPromptHistoryAsync:', e.message);
+    console.error('History: Unexpected error in logPromptHistoryAsync:', e.message, e.stack);
   }
 };
 
@@ -89,13 +102,30 @@ export const handler = async (event) => {
       jsonStr = match[2].trim();
     }
 
-    const generatedPrompts = JSON.parse(jsonStr);
+    let generatedPrompts;
+    try {
+      generatedPrompts = JSON.parse(jsonStr);
+    } catch (parseError) {
+      console.error("Error parsing JSON from Gemini:", parseError, "Original string:", jsonStr);
+      return {
+        statusCode: 500,
+        body: JSON.stringify({ error: 'Gagal memproses respons dari AI. Format tidak valid.' }),
+      };
+    }
 
     // Log history (non-blocking)
     const token = event.headers.authorization?.split('Bearer ')[1];
-    if (token && generatedPrompts) {
+    if (token && generatedPrompts && Object.keys(generatedPrompts).length > 0) {
+      console.log('History: Conditions met for logging video prompt history.');
        logPromptHistoryAsync(token, 'video', formState, generatedPrompts)
-        .catch(err => console.error("History: Error during async video log:", err.message));
+        .catch(err => console.error("History: Error during async video log invocation:", err.message, err.stack));
+    } else {
+      if (!token) {
+        console.warn('History: Video logging skipped, token not found.');
+      }
+      if (!generatedPrompts || Object.keys(generatedPrompts).length === 0) {
+        console.warn('History: Video logging skipped, generatedPrompts is null, undefined, or empty. Value:', generatedPrompts);
+      }
     }
 
     return {
@@ -104,7 +134,7 @@ export const handler = async (event) => {
     };
 
   } catch (error) {
-    console.error('Error generating video prompt with Gemini:', error);
+    console.error('Error generating video prompt with Gemini:', error.message, error.stack);
     return {
       statusCode: 500,
       body: JSON.stringify({ error: error.message || 'Gagal menghasilkan prompt video via AI.' }),
