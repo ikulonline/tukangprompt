@@ -7,8 +7,9 @@ import LoginPage from './src/pages/LoginPage';
 import SignupPage from './src/pages/SignupPage';
 import DashboardPage from './src/pages/DashboardPage';
 import ProtectedRoute from './src/components/ProtectedRoute';
-import AdminProtectedRoute from './src/components/AdminProtectedRoute'; // Import AdminProtectedRoute
-import AdminDashboardPage from './src/pages/AdminDashboardPage'; // Import AdminDashboardPage
+import AdminProtectedRoute from './src/components/AdminProtectedRoute';
+import AdminDashboardPage from './src/pages/AdminDashboardPage';
+import MyConfigsPage from './src/pages/MyConfigsPage'; // BARU
 import { AuthProvider } from './src/contexts/AuthContext';
 import { ThemeProvider } from './src/contexts/ThemeContext';
 
@@ -42,6 +43,15 @@ const App: React.FC = () => {
                   <DashboardPage />
                 </ProtectedRoute>
               } 
+            />
+            {/* BARU: Rute untuk Konfigurasi Saya */}
+            <Route 
+              path="/my-configs"
+              element={
+                <ProtectedRoute>
+                  <MyConfigsPage />
+                </ProtectedRoute>
+              }
             />
             {/* Admin Route */}
             <Route 

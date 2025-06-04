@@ -19,7 +19,7 @@ const MoonIcon: React.FC<{ className?: string }> = ({ className }) => (
 );
 
 const Navbar: React.FC = () => {
-  const { user, profile, signOut, isLoading: authLoading, profileLoading } = useAuth();
+  const { user, profile, signOut, isLoading: authLoading, profileLoading, session } = useAuth(); // Tambahkan session
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
 
@@ -53,6 +53,12 @@ const Navbar: React.FC = () => {
                   </Button>
                 </Link>
               )}
+              {/* BARU: Link ke Konfigurasi Saya */}
+              <Link to="/my-configs">
+                <Button variant="ghost" size="sm" className="hidden sm:inline-flex">
+                  Konfigurasi Saya
+                </Button>
+              </Link>
               <span className="text-sm text-slate-700 dark:text-slate-300 hidden sm:block">{profile?.full_name || user.email}</span>
               <Button onClick={handleLogout} variant="secondary" size="sm">
                 Logout
