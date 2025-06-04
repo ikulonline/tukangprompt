@@ -5,7 +5,7 @@ import { getSupabaseClient, getUserFromToken } from './_utils/supabaseClient';
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY }); // API_KEY must be set in Netlify env vars
 
 const logPromptHistoryAsync = async (token, promptType, inputParameters, generatedPromptsData) => {
-  console.log('History: logPromptHistoryAsync called.');
+  console.log('History: logPromptHistoryAsync called. Token available:', !!token, "Generated prompts data available:", !!generatedPromptsData && Object.keys(generatedPromptsData).length > 0);
   if (!token) {
     console.warn('History: logPromptHistoryAsync - No token provided, aborting history log.');
     return;
@@ -16,19 +16,26 @@ const logPromptHistoryAsync = async (token, promptType, inputParameters, generat
   }
   
   try {
+    console.log('History: About to call getUserFromToken.');
     const { user, error: userError } = await getUserFromToken(token);
+    console.log('History: getUserFromToken returned.', 'User object present:', !!user, 'Error object present:', !!userError);
+    if (userError) console.log('History: userError details:', JSON.stringify(userError));
+    if (user) console.log('History: user.id (if user object exists):', user.id);
+
+
     if (userError || !user) {
-      console.warn('History: Could not log, invalid user token or user not found.', userError ? JSON.stringify(userError) : 'User is null.');
+      console.warn('History: Condition (userError || !user) is TRUE. Logging details before return:');
+      console.warn('History: userError object:', userError ? JSON.stringify(userError) : 'null/undefined');
+      console.warn('History: user object is falsy:', !user);
       return;
     }
-    console.log('History: User ID for history:', user.id);
+    
+    console.log('History: User ID for history (post-check):', user.id);
 
     const supabase = getSupabaseClient(token);
 
     console.log('History: Attempting to insert into prompt_history for user:', user.id, 'Prompt Type:', promptType);
-    // console.log('History: Input params snippet:', JSON.stringify(inputParameters).substring(0,100));
-    // console.log('History: Generated prompts snippet:', JSON.stringify(generatedPromptsData).substring(0,100));
-
+    
     const { error: historyError } = await supabase
       .from('prompt_history')
       .insert([{
