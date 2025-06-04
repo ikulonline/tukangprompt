@@ -9,7 +9,8 @@ import DashboardPage from './src/pages/DashboardPage';
 import ProtectedRoute from './src/components/ProtectedRoute';
 import AdminProtectedRoute from './src/components/AdminProtectedRoute';
 import AdminDashboardPage from './src/pages/AdminDashboardPage';
-import MyConfigsPage from './src/pages/MyConfigsPage'; // BARU
+import MyConfigsPage from './src/pages/MyConfigsPage';
+import MyHistoryPage from './src/pages/MyHistoryPage'; // Import MyHistoryPage
 import { AuthProvider } from './src/contexts/AuthContext';
 import { ThemeProvider } from './src/contexts/ThemeContext';
 
@@ -44,7 +45,6 @@ const App: React.FC = () => {
                 </ProtectedRoute>
               } 
             />
-            {/* BARU: Rute untuk Konfigurasi Saya */}
             <Route 
               path="/my-configs"
               element={
@@ -53,7 +53,14 @@ const App: React.FC = () => {
                 </ProtectedRoute>
               }
             />
-            {/* Admin Route */}
+            <Route 
+              path="/my-history" // Add new route for MyHistoryPage
+              element={
+                <ProtectedRoute>
+                  <MyHistoryPage />
+                </ProtectedRoute>
+              }
+            />
             <Route 
               path="/admin/dashboard"
               element={

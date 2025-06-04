@@ -161,9 +161,17 @@ const ImagePromptForm: React.FC<ImagePromptFormProps> = ({ initialData, onPrompt
     setIsLoading(true);
     setGeneratedPrompts(null);
     setSubmissionError(null);
+
+    const headers: HeadersInit = { 'Content-Type': 'application/json' };
+    if (session?.access_token) {
+      headers['Authorization'] = `Bearer ${session.access_token}`;
+    }
+
     try {
       const response = await fetch('/api/generate-image-prompt', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(formState),
+        method: 'POST', 
+        headers: headers, 
+        body: JSON.stringify(formState),
       });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || `Gagal menghasilkan prompt (status ${response.status})`);

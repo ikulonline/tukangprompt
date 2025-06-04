@@ -1,4 +1,3 @@
-
 // src/types/index.ts
 export interface UserProfile {
   id: string;
@@ -67,12 +66,12 @@ export interface VideoPromptFormState {
   cameraMovementSpeed: string;
   videoActionIntensity: string;
   overallVideoMood: string;
-  subjectType: string;
-  subjectDescription: string;
-  settingLocation: string;
-  artisticCategory: string;
-  aspectRatio: string;
-  negativePrompt: string;
+  subjectType: string; // Shared with image
+  subjectDescription: string; // Shared with image
+  settingLocation: string; // Shared with image
+  artisticCategory: string; // Shared with image but different options
+  aspectRatio: string; // Shared with image but different options
+  negativePrompt: string; // Shared with image
 }
 
 // Definisi untuk output prompt video yang dihasilkan
@@ -81,7 +80,7 @@ export interface GeneratedVideoPrompts {
   chatgpt_video_idea: string;
 }
 
-// BARU: Definisi untuk prompt video yang disimpan (hasil + input)
+// Definisi untuk prompt video yang disimpan (hasil + input)
 export interface SavedVideoPrompt {
   id: string; // UUID from Supabase
   user_id: string;
@@ -93,15 +92,25 @@ export interface SavedVideoPrompt {
 }
 
 
-// BARU: Definisi untuk konfigurasi prompt yang disimpan (hanya input form)
+// Definisi untuk konfigurasi prompt yang disimpan (hanya input form)
 export type PromptConfigParameters = ImagePromptFormState | VideoPromptFormState;
 
 export interface UserPromptConfig {
-  id: number; // bigint from Supabase
+  id: number; // bigint from Supabase, auto-incrementing primary key
   user_id: string;
   config_name: string;
   prompt_type: 'image' | 'video';
-  parameters: PromptConfigParameters;
+  parameters: PromptConfigParameters; // JSONB in Supabase
   created_at: string;
   updated_at: string;
+}
+
+// Definisi untuk entri riwayat prompt
+export interface PromptHistoryEntry {
+  id: number; // bigint from Supabase
+  user_id: string;
+  prompt_type: 'image' | 'video';
+  input_parameters: PromptConfigParameters; // JSONB
+  generated_prompts: GeneratedPrompts | GeneratedVideoPrompts; // JSONB
+  created_at: string;
 }
